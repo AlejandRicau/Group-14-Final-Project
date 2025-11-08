@@ -14,13 +14,13 @@ class MapViewer(arcade.Window):
         for y in range(self.map.height):
             for x in range(self.map.width):
                 cell = self.map.map[y][x]
-                if cell == 0:
+                if cell.color == 0:
                     color = COLOR_EMPTY
-                elif cell == 1:
+                elif cell.color == 1:
                     color = COLOR_PATH
-                elif cell == 2:
+                elif cell.color == 2:
                     color = COLOR_SPAWN
-                elif cell == 3:
+                elif cell.color == 3:
                     color = COLOR_GOAL
                 else:
                     color = arcade.color.BLACK
@@ -37,7 +37,7 @@ class MapViewer(arcade.Window):
         if symbol == arcade.key.M:  # regenerate map (new spawn & goal)
             self.map.generate_new_map()
         elif symbol == arcade.key.P:  # regenerate path (same spawn & goal)
-            self.map.generate_random_path(detour_chance=0.7)
+            self.map.recursive_path_generation(self.map.spawn[0], self.map.goal[0], detour_chance=0.3)
         elif symbol == arcade.key.ESCAPE:
             self.close()
 
