@@ -13,13 +13,7 @@ class Map:
         self.map = [[Tile(x, y) for x in range(self.width)] for y in range(self.height)]
 
         # mark the border
-        for row in self.map:
-            row[0].color = 1
-            row[-1].color = 1
-        for tile in self.map[0]:
-            tile.color = 1
-        for tile in self.map[-1]:
-            tile.color = 1
+        self.make_border()
 
         # mark the spawn and goal
         self.spawn = []
@@ -34,6 +28,12 @@ class Map:
         goal_tile.is_goal = True
         goal_tile.color = 3
         self.goal.append(goal_tile)
+
+    def make_border(self):
+        for y in range(self.height):
+            for x in range(self.width):
+                if y in (0, self.height - 1) or x in (0, self.width - 1):
+                    self.map[y][x].set_border()
 
     def generate_opposite_side_positions(self, offset=3):
         """
@@ -85,6 +85,63 @@ class Map:
         random_width = random.randint(offset, self.width - 1 - offset)
         return self.map[random_height][random_width]
 
+    def expand_map(self, add_width=0, add_height=0, add_new_spawns_goals=False):
+        """
+        Expands the current map outward by the given width and height increments.
+        Keeps existing spawns, goals, and tiles in the center of the new map.
+        Optionally adds new spawns and goals.
+        """
+        # --- Compute new dimensions ---
+        new_width = self.width + add_width
+        new_height = self.height + add_height
+
+        # --- Create new tile grid ---
+        new_map = [[Tile(x, y) for x in range(new_width)] for y in range(new_height)]
+
+        # --- Center offset for placing old map inside new one ---
+        x_offset = (new_width - self.width) // 2
+        y_offset = (new_height - self.height) // 2
+
+        # --- Copy old tiles into new map ---
+        for y in range(self.height):
+            for x in range(self.width):
+                old_tile = self.map[y][x]
+                new_tile = new_map[y + y_offset][x + x_offset]
+
+                # Copy properties
+                new_tile.color = old_tile.color
+                new_tile.is_spawn = old_tile.is_spawn
+                new_tile.is_goal = old_tile.is_goal
+                new_tile.is_border = old_tile.is_border
+
+        # --- Clear all old borders that are now inside the new map ---
+        for row in new_map:
+            for tile in row:
+                if tile.is_border:
+                    tile.clear_border()
+
+        # --- Update map references and size ---
+        self.map = new_map
+        self.width = new_width
+        self.height = new_height
+
+        # --- Update spawn/goal coordinates ---
+        self.spawn = [self.map[tile.y + y_offset][tile.x + x_offset] for tile in self.spawn]
+        self.goal = [self.map[tile.y + y_offset][tile.x + x_offset] for tile in self.goal]
+
+        # --- Rebuild the outer border ---
+        self.make_border()
+
+        # --- Optionally add new spawns/goals ---
+        if add_new_spawns_goals:
+            spawn_tile, goal_tile = self.generate_opposite_side_positions(offset=SPAWN_GOAL_DISTANCE_FROM_EDGE)
+            spawn_tile.is_spawn = True
+            spawn_tile.color = 2
+            goal_tile.is_goal = True
+            goal_tile.color = 3
+            self.spawn.append(spawn_tile)
+            self.goal.append(goal_tile)
+
     def recursive_path_generation(self, start_tile, goal_tile=None, detour_chance=0.1):
         """
             Generates a path from start_tile to goal_tile using DFS.
@@ -98,7 +155,7 @@ class Map:
             Returns:
                 list[Tile] | None: The path from start to goal
             """
-        self.clear_the_map()
+        self.clear_map()
         if goal_tile is None:
             goal_tile = self.goal[0]
 
@@ -119,7 +176,6 @@ class Map:
         for goal in self.goal:
             goal.color = 3
         return path
-
 
     def recursive_path_helper(self, tile, goal_tile, visited, path, detour_chance):
         """
@@ -248,7 +304,7 @@ class Map:
 
         return possible_moves
 
-    def clear_the_map(self):
+    def clear_map(self):
         """Clears the map of all paths."""
         for row in self.map:
             for tile in row:
@@ -258,13 +314,7 @@ class Map:
         for goal in self.goal:
             goal.color = 3
         # mark the border
-        for row in self.map:
-            row[0].color = 1
-            row[-1].color = 1
-        for tile in self.map[0]:
-            tile.color = 1
-        for tile in self.map[-1]:
-            tile.color = 1
+        self.make_border()
 
     def check_for_border(self, tile):
         """
@@ -277,15 +327,14 @@ class Map:
             tuple: A tuple of (bool, str) where the bool is True if the
             tile is on the border and the str is the direction of the border
         """
-        if tile.x == 0:
+        if tile.y == self.height - 1:
             return True, 'up'
-        elif tile.x == self.width - 1:
-            return True, 'down'
         elif tile.y == 0:
+            return True, 'down'
+        elif tile.x == 0:
             return True, 'left'
-        elif tile.y == self.height - 1:
+        elif tile.x == self.width - 1:
             return True, 'right'
-
         return False, None
 
     def check_surrounding(self, tile, from_dir):

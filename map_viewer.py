@@ -1,16 +1,26 @@
 from constants import *
 from Map import Map
+import arcade
 
 
 class MapViewer(arcade.Window):
     def __init__(self, width, height, tile_size):
         super().__init__(width * tile_size, height * tile_size, "Map Visualizer")
         arcade.set_background_color(arcade.color.DARK_SLATE_GRAY)
+
         self.tile_size = tile_size
         self.map = Map(width, height)
+        self.camera = arcade.camera.Camera2D()
+
+
+        # camera control parameters
+        self.camera_speed = 20
+        self.keys_held = set()
 
     def on_draw(self):
         self.clear()
+        self.camera.use()
+
         for y in range(self.map.height):
             for x in range(self.map.width):
                 cell = self.map.map[y][x]
@@ -22,9 +32,12 @@ class MapViewer(arcade.Window):
                     color = COLOR_SPAWN
                 elif cell.color == 3:
                     color = COLOR_GOAL
+                elif cell.color == 4:
+                    color = COLOR_BORDER
                 else:
                     color = arcade.color.BLACK
 
+                # keep your original grid look
                 rect = arcade.rect.LBWH(
                     x * self.tile_size,
                     y * self.tile_size,
@@ -33,13 +46,41 @@ class MapViewer(arcade.Window):
                 )
                 arcade.draw_rect_filled(rect, color)
 
+    def on_update(self, delta_time: float):
+        # smooth camera movement
+        dx = dy = 0
+        if arcade.key.LEFT in self.keys_held:
+            dx -= self.camera_speed
+        if arcade.key.RIGHT in self.keys_held:
+            dx += self.camera_speed
+        if arcade.key.UP in self.keys_held:
+            dy += self.camera_speed
+        if arcade.key.DOWN in self.keys_held:
+            dy -= self.camera_speed
+
+        if dx != 0 or dy != 0:
+            x, y = self.camera.position
+            self.camera.position = (x + dx, y + dy)
+
     def on_key_press(self, symbol, modifiers):
-        if symbol == arcade.key.M:  # regenerate map (new spawn & goal)
+        self.keys_held.add(symbol)
+
+        if symbol == arcade.key.M:
             self.map.generate_new_map()
-        elif symbol == arcade.key.P:  # regenerate path (same spawn & goal)
-            self.map.recursive_path_generation(self.map.spawn[0], self.map.goal[0], detour_chance=0.4)
+        elif symbol == arcade.key.P:
+            self.map.recursive_path_generation(
+                self.map.spawn[0],
+                self.map.goal[0],
+                detour_chance=0.4
+            )
+        elif symbol == arcade.key.E:
+            self.map.expand_map(add_width=6, add_height=6, add_new_spawns_goals=False)
         elif symbol == arcade.key.ESCAPE:
             self.close()
+
+    def on_key_release(self, symbol, modifiers):
+        if symbol in self.keys_held:
+            self.keys_held.remove(symbol)
 
 
 def main():
