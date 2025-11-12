@@ -37,7 +37,7 @@ class MapViewer(arcade.Window):
         if symbol == arcade.key.M:  # regenerate map (new spawn & goal)
             self.map.generate_new_map()
         elif symbol == arcade.key.P:  # regenerate path (same spawn & goal)
-            self.map.recursive_path_generation(self.map.spawn[0], self.map.goal[0], detour_chance=0.3)
+            self.map.recursive_path_generation(self.map.spawn[0], self.map.goal[0], detour_chance=0.4)
         elif symbol == arcade.key.ESCAPE:
             self.close()
 

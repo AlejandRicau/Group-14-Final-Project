@@ -23,19 +23,47 @@ class Map:
 
         # mark the spawn and goal
         self.spawn = []
-        spawn_tile = self.get_random_position_on_map()
+        self.goal = []
+
+        spawn_tile, goal_tile = self.generate_opposite_side_positions(offset=SPAWN_GOAL_DISTANCE_FROM_EDGE)
+
         spawn_tile.is_spawn = True
         spawn_tile.color = 2
         self.spawn.append(spawn_tile)
 
-        self.goal = []
-        goal_tile = self.get_random_position_on_map()
-        # Ensure goal is not the same as spawn
-        while goal_tile == spawn_tile:
-            goal_tile = self.get_random_position_on_map()
         goal_tile.is_goal = True
         goal_tile.color = 3
         self.goal.append(goal_tile)
+
+    def generate_opposite_side_positions(self, offset=3):
+        """
+        Generates spawn and goal tiles near opposite edges of the map
+        but not on the border itself.
+
+        Args:
+            offset (int): Minimum distance from the border.
+
+        Returns:
+            tuple(Tile, Tile): (spawn_tile, goal_tile)
+        """
+        # Choose orientation: horizontal or vertical
+        orientation = random.choice(["horizontal", "vertical"])
+
+        if orientation == "horizontal":
+            # Spawn near left edge, goal near right edge
+            spawn_x = random.randint(offset, offset + 2)
+            goal_x = random.randint(self.width - 1 - offset - 2, self.width - 1 - offset)
+            spawn_y = random.randint(offset, self.height - 1 - offset)
+            goal_y = random.randint(offset, self.height - 1 - offset)
+
+        else:
+            # Spawn near top edge, goal near bottom edge
+            spawn_y = random.randint(offset, offset + 2)
+            goal_y = random.randint(self.height - 1 - offset - 2, self.height - 1 - offset)
+            spawn_x = random.randint(offset, self.width - 1 - offset)
+            goal_x = random.randint(offset, self.width - 1 - offset)
+
+        return self.map[spawn_y][spawn_x], self.map[goal_y][goal_x]
 
     def get_random_position_on_map(self):
         offset = SPAWN_GOAL_DISTANCE_FROM_EDGE
@@ -64,17 +92,20 @@ class Map:
         path = {}
 
         success = self.recursive_path_helper(start_tile, goal_tile, visited, path, detour_chance)
-        if success:
-            # Color the final path
-            for t in path.values():
-                t.color = 1
-            for spawn in self.spawn:
-                spawn.color = 2
-            for goal in self.goal:
-                goal.color = 3
-            return path
-        else:
-            return None
+        while not success:
+            visited = set()
+            path = {}
+            success = self.recursive_path_helper(start_tile, goal_tile, visited, path, detour_chance)
+
+        # Color the final path
+        for t in path.values():
+            t.color = 1
+        for spawn in self.spawn:
+            spawn.color = 2
+        for goal in self.goal:
+            goal.color = 3
+        return path
+
 
     def recursive_path_helper(self, tile, goal_tile, visited, path, detour_chance):
         """
@@ -85,6 +116,8 @@ class Map:
             return False
         if self.check_2x2_path_cluster(tile, path):
             return False
+        if self.check_too_many_adjacent_neighbors(tile, path):
+            return False  # <-- NEW check
         if (tile.x, tile.y) in visited:
             return False
 
@@ -301,3 +334,28 @@ class Map:
                 return True
 
         return False
+
+    def check_too_many_adjacent_neighbors(self, tile, path):
+        """
+        Checks if a tile has more than 1 adjacent neighbor (up, down, left, right)
+        that is already part of the path.
+
+        Args:
+            tile (Tile): The tile to check
+            path (dict): Current DFS path
+
+        Returns:
+            bool: True if tile has >1 adjacent path neighbors, False otherwise
+        """
+        x, y = tile.x, tile.y
+        directions = [(0, 1), (1, 0), (0, -1), (-1, 0)]  # up, right, down, left
+        count = 0
+
+        for dx, dy in directions:
+            nx, ny = x + dx, y + dy
+            if (nx, ny) in path:
+                count += 1
+
+        return count > 1
+
+
