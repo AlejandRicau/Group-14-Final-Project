@@ -12,7 +12,12 @@ COLOR_SPAWN = arcade.color.BLUE
 COLOR_GOAL = arcade.color.RED
 COLOR_BORDER = arcade.color.DARK_BROWN
 
-# Spawn and Goal distance from the edge
+'''Spawn and Goal distance from the edge'''
 # This is to ensure that the spawn and goal are not on the edge
 # There are some trouble in map generation if they are at the edge or on the corner
 SPAWN_GOAL_DISTANCE_FROM_EDGE = 2
+
+'''The region of isolation for new spawn and goal'''
+# This is to ensure that the new spawn and goal are not too close to the existing spawn and goal
+# This is going to be the side length of a square that's 3x3 centered on the new point
+DX_REGION_OF_ISOLATION = 3

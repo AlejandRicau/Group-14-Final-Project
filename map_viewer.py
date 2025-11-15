@@ -67,14 +67,23 @@ class MapViewer(arcade.Window):
 
         if symbol == arcade.key.M:
             self.map.generate_new_map()
+
         elif symbol == arcade.key.P:
             self.map.recursive_path_generation(
-                self.map.spawn[0],
-                self.map.goal[0],
+                self.map.spawns[0],
+                self.map.goals[0],
                 detour_chance=0.4
             )
+
         elif symbol == arcade.key.E:
-            self.map.expand_map(add_width=6, add_height=6, add_new_spawns_goals=False)
+            self.map.expand_map(add_width=6, add_height=6, add_new_spawns_goals=True)
+
+        elif symbol == arcade.key.F:
+            self.map.generate_new_special_point("spawn")
+
+        elif symbol == arcade.key.G:
+            self.map.generate_new_special_point("goal")
+
         elif symbol == arcade.key.ESCAPE:
             self.close()
 

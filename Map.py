@@ -16,24 +16,23 @@ class Map:
         self.make_border()
 
         # mark the spawn and goal
-        self.spawn = []
-        self.goal = []
+        self.spawns = []
+        self.goals = []
 
         spawn_tile, goal_tile = self.generate_opposite_side_positions(offset=SPAWN_GOAL_DISTANCE_FROM_EDGE)
 
         spawn_tile.is_spawn = True
-        spawn_tile.color = 2
-        self.spawn.append(spawn_tile)
+        self.spawns.append(spawn_tile)
 
         goal_tile.is_goal = True
-        goal_tile.color = 3
-        self.goal.append(goal_tile)
+        self.goals.append(goal_tile)
 
     def make_border(self):
+        """Marks the border tiles with a distinct color."""
         for y in range(self.height):
             for x in range(self.width):
                 if y in (0, self.height - 1) or x in (0, self.width - 1):
-                    self.map[y][x].set_border()
+                    self.map[y][x].is_border = True
 
     def generate_opposite_side_positions(self, offset=3):
         """
@@ -79,17 +78,16 @@ class Map:
 
         return self.map[spawn_y][spawn_x], self.map[goal_y][goal_x]
 
-    def get_random_position_on_map(self):
-        offset = SPAWN_GOAL_DISTANCE_FROM_EDGE
-        random_height = random.randint(offset, self.height - 1 - offset)
-        random_width = random.randint(offset, self.width - 1 - offset)
-        return self.map[random_height][random_width]
-
     def expand_map(self, add_width=0, add_height=0, add_new_spawns_goals=False):
         """
         Expands the current map outward by the given width and height increments.
         Keeps existing spawns, goals, and tiles in the center of the new map.
         Optionally adds new spawns and goals.
+
+        Args:
+            add_width (int): Number of tiles to add to the width.
+            add_height (int): Number of tiles to add to the height.
+            add_new_spawns_goals (bool): Whether to add new spawns and goals.
         """
         # --- Compute new dimensions ---
         new_width = self.width + add_width
@@ -109,7 +107,6 @@ class Map:
                 new_tile = new_map[y + y_offset][x + x_offset]
 
                 # Copy properties
-                new_tile.color = old_tile.color
                 new_tile.is_spawn = old_tile.is_spawn
                 new_tile.is_goal = old_tile.is_goal
                 new_tile.is_border = old_tile.is_border
@@ -126,8 +123,8 @@ class Map:
         self.height = new_height
 
         # --- Update spawn/goal coordinates ---
-        self.spawn = [self.map[tile.y + y_offset][tile.x + x_offset] for tile in self.spawn]
-        self.goal = [self.map[tile.y + y_offset][tile.x + x_offset] for tile in self.goal]
+        self.spawns = [self.map[tile.y + y_offset][tile.x + x_offset] for tile in self.spawns]
+        self.goals = [self.map[tile.y + y_offset][tile.x + x_offset] for tile in self.goals]
 
         # --- Rebuild the outer border ---
         self.make_border()
@@ -139,42 +136,42 @@ class Map:
             spawn_tile.color = 2
             goal_tile.is_goal = True
             goal_tile.color = 3
-            self.spawn.append(spawn_tile)
-            self.goal.append(goal_tile)
+            self.spawns.append(spawn_tile)
+            self.goals.append(goal_tile)
 
-    def recursive_path_generation(self, start_tile, goal_tile=None, detour_chance=0.1):
+    def recursive_path_generation(self, start_tile, end_tile, detour_chance=0.1):
         """
             Generates a path from start_tile to goal_tile using DFS.
             Returns the path as a list of tiles if successful, else None.
 
             Args:
                 start_tile (Tile): Starting tile
-                goal_tile (Tile): Goal tile (default: self.goal[0])
+                end_tile (Tile): Goal tile (default: self.goals[0])
                 detour_chance (float): Probability to take random detour
 
             Returns:
-                list[Tile] | None: The path from start to goal
+                list[Tile]: The path from start to goal
             """
         self.clear_map()
-        if goal_tile is None:
-            goal_tile = self.goal[0]
+        if not end_tile or not start_tile:
+            raise ValueError("Start or end tile has to be defined")
 
         visited = set()
         path = {}
 
-        success = self.recursive_path_helper(start_tile, goal_tile, visited, path, detour_chance)
+        success = self.recursive_path_helper(start_tile, end_tile, visited, path, detour_chance)
         while not success:
             visited = set()
             path = {}
-            success = self.recursive_path_helper(start_tile, goal_tile, visited, path, detour_chance)
+            success = self.recursive_path_helper(start_tile, end_tile, visited, path, detour_chance)
 
         # Color the final path
         for t in path.values():
-            t.color = 1
-        for spawn in self.spawn:
-            spawn.color = 2
-        for goal in self.goal:
-            goal.color = 3
+            t.is_path = True
+        for spawn in self.spawns:
+            spawn.is_spawn = True
+        for goal in self.goals:
+            goal.is_goal = True
         return path
 
     def recursive_path_helper(self, tile, goal_tile, visited, path, detour_chance):
@@ -182,7 +179,7 @@ class Map:
         Recursive DFS helper function.
         """
         # Base cases
-        if tile.color == 1:
+        if tile.is_path:
             return False
         if self.check_2x2_path_cluster(tile, path):
             return False
@@ -224,8 +221,8 @@ class Map:
         all_moves = ["up", "right", "down", "left"]
 
         # Get preferred moves
-        dx = self.goal[0].x - tile.x
-        dy = self.goal[0].y - tile.y
+        dx = self.goals[0].x - tile.x
+        dy = self.goals[0].y - tile.y
 
         # Get preferred moves
         preferred = []
@@ -275,88 +272,32 @@ class Map:
         else:
             return self.map[tile.y][tile.x-1]
 
-    def path_gen_next_step_finder(self, tile):
-        """
-        Finds the options for next step at current location.
-
-        Args:
-            tile (Tile): The tile to find neighbors for
-
-        Returns:
-            list: A list of possible moves
-        """
-        # find the possible directions
-        directions = ["up", "right", "down", "left"]
-        is_border, border = self.check_for_border(tile)
-        if is_border:
-            directions.remove(self.check_for_border(tile)[1])
-
-        # find the possible moves
-        possible_moves = []
-        for i, each in enumerate(directions):
-            neighbor = self.get_neighboring_tile(tile, each)
-            if neighbor.color != 0:
-                continue
-            '''check the neighbors of neighbor to ensure single-unit width'''
-            if self.check_surrounding(neighbor, opposite_direction(each)):
-                continue
-            possible_moves.append(each)
-
-        return possible_moves
-
     def clear_map(self):
         """Clears the map of all paths."""
         for row in self.map:
             for tile in row:
-                tile.color = 0
-        for spawn in self.spawn:
-            spawn.color = 2
-        for goal in self.goal:
-            goal.color = 3
-        # mark the border
-        self.make_border()
+                tile.clear_path()
 
-    def check_for_border(self, tile):
+    def check_for_border(self, tile, dist=1):
         """
         Checks if the tile is on the border of the map.
 
         Args:
             tile (Tile): The tile to check
+            dist (int): The distance from the border to check
 
         Returns:
-            tuple: A tuple of (bool, str) where the bool is True if the
-            tile is on the border and the str is the direction of the border
+            bool: True if the tile is x dist within the border, False otherwise
         """
-        if tile.y == self.height - 1:
+        if tile.y >= self.height - dist:
             return True, 'up'
-        elif tile.y == 0:
+        elif tile.y <= dist - 1:
             return True, 'down'
-        elif tile.x == 0:
+        elif tile.x <= dist - 1:
             return True, 'left'
-        elif tile.x == self.width - 1:
+        elif tile.x >= self.width - dist:
             return True, 'right'
         return False, None
-
-    def check_surrounding(self, tile, from_dir):
-        """
-        Checks if the tile is surrounded by walls.
-
-        Args:
-            tile (Tile): The tile to check
-            from_dir (str): The direction from which the tile is being checked
-
-        Returns:
-            bool: True if the tile is surrounded by walls, False otherwise
-        """
-        directions = ["up", "right", "down", "left"]
-        directions.remove(from_dir)
-        is_border, border = self.check_for_border(tile)
-        if is_border:
-            directions.remove(border)
-        for direction in directions:
-            if self.get_neighboring_tile(tile, direction).color != 0:
-                return True
-        return False
 
     def check_2x2_path_cluster(self, tile, path):
         """
@@ -420,5 +361,57 @@ class Map:
                 count += 1
 
         return count > 1
+    
+    def check_spawn_or_goal_nearby(self, tile, offset=DX_REGION_OF_ISOLATION):
+        """
+        Checks if a tile is within the region of isolation of any spawn or goal.
+
+        Args:
+            tile (Tile): The tile to check
+            offset (int): DX by DX region of isolation
+
+        Returns:
+            bool: True if tile is within the region of isolation of any spawn or goal, False otherwise
+        """
+        x, y = tile.x, tile.y
+        for row in self.map[y-offset : y+offset+1]:
+            for tile in row[x-offset : x+offset+1]:
+                if tile.is_spawn or tile.is_goal or tile.is_path:
+                    return True
+        return False
+
+    def generate_new_special_point(self, pt_type):
+        """
+        Generates a new spawn or goal point.
+
+        Args:
+            pt_type (str): The type of special point to generate
+
+        Returns:
+            None: Modify and append the new tile to the list of spawns or goals
+        """
+        while True:
+            # Randomly generate a new Point
+            new_point = random.choice(random.choice(self.map))
+
+            # Keep some tiles from the border
+            if self.check_for_border(new_point, dist=SPAWN_GOAL_DISTANCE_FROM_EDGE)[0]:
+                continue
+
+            # Check if the new point is within the region of isolation of any spawn or goal
+            if self.check_spawn_or_goal_nearby(new_point):
+                continue
+
+            # If all checks pass, break the while loop
+            break
+
+        # Set the new point to spawn or goal
+        if pt_type == "spawn":
+            new_point.is_spawn = True
+            self.spawns.append(new_point)
+        else:
+            new_point.is_goal = True
+            self.goals.append(new_point)
+
 
 
