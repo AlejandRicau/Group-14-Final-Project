@@ -1,19 +1,19 @@
 class Tile:
-    def __init__(self, x, y):
+    def __init__(self, x, y, state='empty'):
         self.x = x
         self.y = y
-        self._state = None  # Only track the state
+        self._state = state  # Only track the state
 
     def set_state(self, state):
-        """Set the tile's state. Valid states: 'spawn', 'goal', 'border', 'path'."""
-        valid_states = {'spawn', 'goal', 'border', 'path'}
+        """Set the tile's state. Valid states: 'spawn', 'goal', 'border', 'path', 'empty'."""
+        valid_states = {'spawn', 'goal', 'border', 'path', 'empty'}
         if state not in valid_states:
             raise ValueError(f"Invalid state: {state}. Must be one of {valid_states}")
         self._state = state
 
     def clear_state(self):
         """Clear the tile's state."""
-        self._state = None
+        self._state = 'empty'
 
     def get_state(self):
         """Return the current state of the tile."""
@@ -39,5 +39,7 @@ class Tile:
             return 2
         elif self._state == 'path':
             return 1
-        else:
+        elif self._state == 'empty':
             return 0
+        else:
+            raise ValueError(f"Invalid state: {self._state}")

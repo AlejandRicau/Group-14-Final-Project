@@ -107,7 +107,10 @@ class Map:
                 new_tile = new_map[y + y_offset][x + x_offset]
 
                 # Copy properties
-                new_tile.set_state(old_tile.get_state())
+                try:
+                    new_tile.set_state(old_tile.get_state())
+                except ValueError:
+                    print(old_tile.get_state(), new_tile.get_state())
 
         # --- Clear all old borders that are now inside the new map ---
         for row in new_map:
@@ -154,7 +157,6 @@ class Map:
         self.clear_map()
         visited = set()
         path = {}
-        i = 0
 
         '''Define relative parameters'''
         scales, detour_chance = get_path_scale_and_detour(self.difficulty)

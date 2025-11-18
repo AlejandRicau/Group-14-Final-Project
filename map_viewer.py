@@ -76,7 +76,7 @@ class MapViewer(arcade.Window):
             )
 
         elif symbol == arcade.key.E:
-            self.map.expand_map(add_width=6, add_height=6, add_new_spawns_goals=True)
+            self.map.expand_map(add_width=6, add_height=6, add_new_spawns_goals=False)
 
         elif symbol == arcade.key.F:
             self.map.generate_new_special_point("spawn")
