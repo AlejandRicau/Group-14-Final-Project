@@ -1,88 +1,43 @@
 class Tile:
-    def __init__(self, x, y, color=0):
+    def __init__(self, x, y):
         self.x = x
         self.y = y
-        self._is_spawn = False
-        self._is_goal = False
-        self._is_border = False
-        self._is_path = False
+        self._state = None  # Only track the state
 
-    '''Clear state method'''
-    # clear the state of tile every time there is a state update
-    def _clear_states(self):
-        self._is_spawn = False
-        self._is_goal = False
-        self._is_border = False
-        self._is_path = False
+    def set_state(self, state):
+        """Set the tile's state. Valid states: 'spawn', 'goal', 'border', 'path'."""
+        valid_states = {'spawn', 'goal', 'border', 'path'}
+        if state not in valid_states:
+            raise ValueError(f"Invalid state: {state}. Must be one of {valid_states}")
+        self._state = state
 
-    '''Update color based on tile type'''
+    def clear_state(self):
+        """Clear the tile's state."""
+        self._state = None
+
+    def get_state(self):
+        """Return the current state of the tile."""
+        return self._state
+
+    def shortest_path_to(self, other_tile):
+        """
+        Returns the shortest number of tiles between self and other_tile,
+        including start and goal tiles, assuming orthogonal movement.
+        """
+        dx = abs(self.x - other_tile.x)
+        dy = abs(self.y - other_tile.y)
+        return dx + dy + 1  # include start and goal tiles
+
     @property
     def color(self):
-        if self.is_border:
+        """Return color based on state."""
+        if self._state == 'border':
             return 4
-        elif self.is_goal:
+        elif self._state == 'goal':
             return 3
-        elif self.is_spawn:
+        elif self._state == 'spawn':
             return 2
-        elif self.is_path:
+        elif self._state == 'path':
             return 1
         else:
             return 0
-
-    '''Spawn Property'''
-    @property
-    def is_spawn(self):
-        return self._is_spawn
-
-    @is_spawn.setter
-    def is_spawn(self, value):
-        if value:  # Only clear when turning on
-            self._clear_states()
-        self._is_spawn = value
-
-    '''Goal Property'''
-    @property
-    def is_goal(self):
-        return self._is_goal
-
-    @is_goal.setter
-    def is_goal(self, value):
-        if value:  # Only clear when turning on
-            self._clear_states()
-        self._is_goal = value
-
-    '''Border Property'''
-    @property
-    def is_border(self):
-        return self._is_border
-
-    @is_border.setter
-    def is_border(self, value):
-        if value:
-            self._clear_states()
-        self._is_border = value
-
-    '''Path Property'''
-    @property
-    def is_path(self):
-        return self._is_path
-
-    @is_path.setter
-    def is_path(self, value):
-        if value:  # Only clear when turning on
-            self._clear_states()
-        self._is_path = value
-
-    '''Clear Methods'''
-
-    def clear_spawn(self):
-        self._is_spawn = False
-
-    def clear_goal(self):
-        self._is_goal = False
-
-    def clear_border(self):
-        self._is_border = False
-
-    def clear_path(self):
-        self._is_path = False

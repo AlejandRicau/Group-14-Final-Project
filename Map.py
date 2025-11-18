@@ -6,6 +6,7 @@ class Map:
     def __init__(self, width, height):
         self.width = width
         self.height = height
+        self.difficulty = 4
         self.generate_new_map()
 
     def generate_new_map(self):
@@ -21,10 +22,10 @@ class Map:
 
         spawn_tile, goal_tile = self.generate_opposite_side_positions(offset=SPAWN_GOAL_DISTANCE_FROM_EDGE)
 
-        spawn_tile.is_spawn = True
+        spawn_tile.set_state('spawn')
         self.spawns.append(spawn_tile)
 
-        goal_tile.is_goal = True
+        goal_tile.set_state('goal')
         self.goals.append(goal_tile)
 
     def make_border(self):
@@ -32,7 +33,7 @@ class Map:
         for y in range(self.height):
             for x in range(self.width):
                 if y in (0, self.height - 1) or x in (0, self.width - 1):
-                    self.map[y][x].is_border = True
+                    self.map[y][x].set_state('border')
 
     def generate_opposite_side_positions(self, offset=3):
         """
@@ -63,7 +64,6 @@ class Map:
             goal_y = random.randint(offset, self.height - 1 - offset)
 
         else:  # vertical
-            # Randomly choose which side the spawn starts on
             spawn_on_top = random.choice([True, False])
 
             if spawn_on_top:
@@ -107,15 +107,13 @@ class Map:
                 new_tile = new_map[y + y_offset][x + x_offset]
 
                 # Copy properties
-                new_tile.is_spawn = old_tile.is_spawn
-                new_tile.is_goal = old_tile.is_goal
-                new_tile.is_border = old_tile.is_border
+                new_tile.set_state(old_tile.get_state())
 
         # --- Clear all old borders that are now inside the new map ---
         for row in new_map:
             for tile in row:
-                if tile.is_border:
-                    tile.clear_border()
+                if tile.get_state() == 'border':
+                    tile.clear_state()
 
         # --- Update map references and size ---
         self.map = new_map
@@ -132,9 +130,9 @@ class Map:
         # --- Optionally add new spawns/goals ---
         if add_new_spawns_goals:
             spawn_tile, goal_tile = self.generate_opposite_side_positions(offset=SPAWN_GOAL_DISTANCE_FROM_EDGE)
-            spawn_tile.is_spawn = True
+            spawn_tile.set_state('spawn')
             spawn_tile.color = 2
-            goal_tile.is_goal = True
+            goal_tile.set_state('goal')
             goal_tile.color = 3
             self.spawns.append(spawn_tile)
             self.goals.append(goal_tile)
@@ -152,26 +150,35 @@ class Map:
             Returns:
                 list[Tile]: The path from start to goal
             """
+        '''Initialize the map and variables'''
         self.clear_map()
-        if not end_tile or not start_tile:
-            raise ValueError("Start or end tile has to be defined")
-
         visited = set()
         path = {}
+        i = 0
 
+        '''Define relative parameters'''
+        scales, detour_chance = get_path_scale_and_detour(self.difficulty)
+        shortest_path_length = start_tile.shortest_path_to(end_tile)
+
+        '''Generate the first path'''
         success = self.recursive_path_helper(start_tile, end_tile, visited, path, detour_chance)
-        while not success:
+
+        '''Generate the path until it satisfy the requirement'''
+        while True:
             visited = set()
             path = {}
             success = self.recursive_path_helper(start_tile, end_tile, visited, path, detour_chance)
+            # Check if the path is in a desired range
+            if success and (scales[1] * shortest_path_length > len(path) > scales[0] * shortest_path_length):
+                break
 
         # Color the final path
         for t in path.values():
-            t.is_path = True
+            t.set_state('path')
         for spawn in self.spawns:
-            spawn.is_spawn = True
+            spawn.set_state('spawn')
         for goal in self.goals:
-            goal.is_goal = True
+            goal.set_state('goal')
         return path
 
     def recursive_path_helper(self, tile, goal_tile, visited, path, detour_chance):
@@ -179,7 +186,7 @@ class Map:
         Recursive DFS helper function.
         """
         # Base cases
-        if tile.is_path:
+        if tile.get_state() == path:
             return False
         if self.check_2x2_path_cluster(tile, path):
             return False
@@ -276,7 +283,8 @@ class Map:
         """Clears the map of all paths."""
         for row in self.map:
             for tile in row:
-                tile.clear_path()
+                if tile.get_state() == 'path':
+                    tile.clear_state()
 
     def check_for_border(self, tile, dist=1):
         """
@@ -376,7 +384,7 @@ class Map:
         x, y = tile.x, tile.y
         for row in self.map[y-offset : y+offset+1]:
             for tile in row[x-offset : x+offset+1]:
-                if tile.is_spawn or tile.is_goal or tile.is_path:
+                if tile.get_state() in ['spawn', 'goal', 'path']:
                     return True
         return False
 
@@ -407,11 +415,14 @@ class Map:
 
         # Set the new point to spawn or goal
         if pt_type == "spawn":
-            new_point.is_spawn = True
+            new_point.set_state('spawn')
             self.spawns.append(new_point)
         else:
-            new_point.is_goal = True
+            new_point.set_state('goal')
             self.goals.append(new_point)
+
+    def set_difficulty(self, difficulty):
+        self.difficulty = difficulty
 
 
 
