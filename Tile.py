@@ -3,6 +3,7 @@ class Tile:
         self.x = x
         self.y = y
         self._state = state  # Only track the state
+        self.tower = None
 
     def set_state(self, state):
         """Set the tile's state. Valid states: 'spawn', 'goal', 'border', 'path', 'empty'."""

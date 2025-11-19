@@ -75,3 +75,33 @@ def get_path_scale_and_detour(difficulty):
 
     return (min_scale, max_scale), detour_chance
 
+def tile_to_pixel_center(x, y, tile_size):
+    """
+    Convert tile coordinates (x, y) to pixel coordinates of the tile's center.
+
+    Args:
+        x (int): tile x-coordinate
+        y (int): tile y-coordinate
+        tile_size (int): size of one tile in pixels
+
+    Returns:
+        (float, float): pixel coordinates (center_x, center_y)
+    """
+    center_x = x * tile_size + tile_size / 2
+    center_y = y * tile_size + tile_size / 2
+    return center_x, center_y
+
+def distance_measure(x1, y1, x2, y2):
+    """
+    Returns the Euclidean distance between two points.
+
+    Args:
+        x1 (float): x-coordinate of the first point
+        y1 (float): y-coordinate of the first point
+        x2 (float): x-coordinate of the second point
+        y2 (float): y-coordinate of the second point
+
+    Returns:
+        float: Euclidean distance between the two points
+    """
+    return math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
