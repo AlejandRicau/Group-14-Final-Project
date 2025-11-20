@@ -192,8 +192,8 @@ class Map:
             return False
         if tile.get_state() == 'border':
             return False
-        # if self.check_2x2_path_cluster(tile, path):
-        #     return False
+        if self.check_2x2_path_cluster(tile, path):
+            return False
         if self.check_too_many_adjacent_neighbors(tile, path):
             return False  # <-- NEW check
         if (tile.x, tile.y) in visited:
