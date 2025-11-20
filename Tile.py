@@ -3,6 +3,7 @@ class Tile:
         self.x = x
         self.y = y
         self._state = state  # Only track the state
+        self.tower = None
 
     def __str__(self):
         return f"({self.x}, {self.y}, self.{self._state})"

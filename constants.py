@@ -11,6 +11,7 @@ COLOR_PATH = arcade.color.SEA_GREEN
 COLOR_SPAWN = arcade.color.BLUE
 COLOR_GOAL = arcade.color.RED
 COLOR_BORDER = arcade.color.DARK_BROWN
+COLOR_TOWER = arcade.color.YELLOW
 
 '''Spawn and Goal distance from the edge'''
 # This is to ensure that the spawn and goal are not on the edge
