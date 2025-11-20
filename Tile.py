@@ -1,14 +1,23 @@
+from helper_functions import *
+from constants import *
 import arcade
+
 class Tile(arcade.Sprite):
     def __init__(self, x, y, state='empty'):
         super().__init__()
         self.x = x
         self.y = y
+        self.grid_pos = (self.x, self.y)
+        self.matrix_to_pixel_position()
+
         self._state = state  # Only track the state
         self.tower = None
 
     def __str__(self):
         return f"({self.x}, {self.y}, self.{self._state})"
+
+    def matrix_to_pixel_position(self):
+        self.px_x, self.px_y = tile_to_pixel_center(self.x, self.y, TILE_SIZE)
 
     def set_state(self, state):
         """Set the tile's state. Valid states: 'spawn', 'goal', 'border', 'path', 'empty'."""
