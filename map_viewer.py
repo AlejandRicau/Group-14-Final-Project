@@ -12,7 +12,6 @@ class MapViewer(arcade.Window):
         self.map = Map(width, height)
         self.camera = arcade.camera.Camera2D()
 
-
         # camera control parameters
         self.camera_speed = 20
         self.keys_held = set()
@@ -46,6 +45,8 @@ class MapViewer(arcade.Window):
                 )
                 arcade.draw_rect_filled(rect, color)
 
+
+
     def on_update(self, delta_time: float):
         # smooth camera movement
         dx = dy = 0
@@ -71,8 +72,7 @@ class MapViewer(arcade.Window):
         elif symbol == arcade.key.P:
             self.map.recursive_path_generation(
                 self.map.spawns[0],
-                self.map.goals[0],
-                detour_chance=0.4
+                self.map.goals[0]
             )
 
         elif symbol == arcade.key.E:

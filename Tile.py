@@ -4,6 +4,9 @@ class Tile:
         self.y = y
         self._state = state  # Only track the state
 
+    def __str__(self):
+        return f"({self.x}, {self.y}, self.{self._state})"
+
     def set_state(self, state):
         """Set the tile's state. Valid states: 'spawn', 'goal', 'border', 'path', 'empty'."""
         valid_states = {'spawn', 'goal', 'border', 'path', 'empty'}

@@ -3,10 +3,10 @@ from Tile import Tile
 from helper_functions import *
 
 class Map:
-    def __init__(self, width, height):
+    def __init__(self, width, height, difficulty=4):
         self.width = width
         self.height = height
-        self.difficulty = 4
+        self.difficulty = difficulty
         self.generate_new_map()
 
     def generate_new_map(self):
@@ -140,7 +140,7 @@ class Map:
             self.spawns.append(spawn_tile)
             self.goals.append(goal_tile)
 
-    def recursive_path_generation(self, start_tile, end_tile, detour_chance=0.1):
+    def recursive_path_generation(self, start_tile, end_tile):
         """
             Generates a path from start_tile to goal_tile using DFS.
             Returns the path as a list of tiles if successful, else None.
@@ -190,8 +190,10 @@ class Map:
         # Base cases
         if tile.get_state() == path:
             return False
-        if self.check_2x2_path_cluster(tile, path):
+        if tile.get_state() == 'border':
             return False
+        # if self.check_2x2_path_cluster(tile, path):
+        #     return False
         if self.check_too_many_adjacent_neighbors(tile, path):
             return False  # <-- NEW check
         if (tile.x, tile.y) in visited:
@@ -270,16 +272,26 @@ class Map:
             direction (str): The direction to find neighbors for
 
         Returns:
-            Tile: The neighboring tile object
+            Tile: The neighboring tile object, or None if out of bounds
         """
+        # Calculate potential new coordinates
+        nx, ny = tile.x, tile.y
+
         if direction == "up":
-            return self.map[tile.y+1][tile.x]
+            ny += 1
         elif direction == "right":
-            return self.map[tile.y][tile.x+1]
+            nx += 1
         elif direction == "down":
-            return self.map[tile.y-1][tile.x]
-        else:
-            return self.map[tile.y][tile.x-1]
+            ny -= 1
+        elif direction == "left":
+            nx -= 1
+
+        # VALIDATION: Check if new coordinates are within map dimensions
+        if 0 <= nx < self.width and 0 <= ny < self.height:
+            return self.map[ny][nx]
+
+        # Return None if we hit a wall
+        return None
 
     def clear_map(self):
         """Clears the map of all paths."""
@@ -343,7 +355,7 @@ class Map:
                     if neighbor_tile.color != 0 or (nx, ny) in path:
                         count += 1
 
-            if count >= 3:
+            if count == 4:
                 # Placing tile here would form a 2x2 or larger solid cluster
                 return True
 
@@ -392,39 +404,202 @@ class Map:
 
     def generate_new_special_point(self, pt_type):
         """
-        Generates a new spawn or goal point.
-
-        Args:
-            pt_type (str): The type of special point to generate
-
-        Returns:
-            None: Modify and append the new tile to the list of spawns or goals
+        Generates a new spawn or goal point and connects it to the path.
+        Retries location placement if no connection is possible.
         """
-        while True:
-            # Randomly generate a new Point
+
+        # Safety break to prevent infinite loops if map is full
+        points_checked = 0
+
+        while points_checked < 20:
+            # --- 1. Find a valid Empty Spot ---
             new_point = random.choice(random.choice(self.map))
 
-            # Keep some tiles from the border
+            # Check border distance
             if self.check_for_border(new_point, dist=SPAWN_GOAL_DISTANCE_FROM_EDGE)[0]:
                 continue
 
-            # Check if the new point is within the region of isolation of any spawn or goal
+            # Check isolation region
             if self.check_spawn_or_goal_nearby(new_point):
                 continue
 
-            # If all checks pass, break the while loop
-            break
+            points_checked += 1
 
-        # Set the new point to spawn or goal
-        if pt_type == "spawn":
-            new_point.set_state('spawn')
-            self.spawns.append(new_point)
-        else:
-            new_point.set_state('goal')
-            self.goals.append(new_point)
+            # --- 2. Get all valid connection candidates ---
+            candidates = self.get_candidate_path_points(new_point)
+
+            if not candidates:
+                continue
+
+            # --- 3. Iterate through candidates until one connects ---
+            path_connected = False
+
+            for fork_point in candidates:
+                # Attempt to generate path with fewer retries per candidate
+                # (Since we have many candidates, we don't need to force one hard)
+                path = self.branch_path_generation(fork_point, new_point)
+
+                if path:
+                    path_connected = True
+                    break  # We found a working path!
+
+            # If we went through all candidates and none worked,
+            # loop continues to pick a completely new 'new_point'
+            if not path_connected:
+                continue
+
+            # --- 4. Finalize Success ---
+            if pt_type == "spawn":
+                new_point.set_state('spawn')
+                self.spawns.append(new_point)
+            else:
+                new_point.set_state('goal')
+                self.goals.append(new_point)
+
+            return  # Exit function successfully
+
+        print(f"Could not generate new {pt_type} after checking multiple locations.")
 
     def set_difficulty(self, difficulty):
         self.difficulty = difficulty
+
+    def get_candidate_path_points(self, target_point):
+        """
+        Returns a list of random tiles from the current path, filtered by:
+        1. Distance from target point based on difficulty
+        2. Validity as a branch starting point
+
+        Returns:
+            list[Tile]: A shuffled list of valid candidates.
+        """
+        path_tiles = [tile for row in self.map for tile in row if tile.get_state() == 'path']
+
+        if not path_tiles:
+            return []
+
+        scales, _ = get_path_scale_and_detour(self.difficulty)
+
+        max_distance_from_target = max(
+            target_point.shortest_path_to(tile) for tile in path_tiles
+        )
+
+        min_distance = int((2 - scales[1]) * max_distance_from_target)
+        max_distance = int((2 - scales[0]) * max_distance_from_target)
+
+        valid_tiles = []
+        for tile in path_tiles:
+            distance = target_point.shortest_path_to(tile)
+            if min_distance <= distance <= max_distance:
+                if self.check_valid_branch_start(tile):
+                    valid_tiles.append(tile)
+
+        # Shuffle to maintain randomness
+        random.shuffle(valid_tiles)
+        return valid_tiles
+
+    def check_valid_branch_start(self, tile):
+        """
+        Checks if a tile can be a valid branch starting point by ensuring that
+        the first step of the branch won't immediately form a 2x2 cluster.
+
+        We check the 4 immediate neighbors - if the branch can take at least one
+        step without forming a 2x2 cluster, it's valid.
+
+        Args:
+            tile (Tile): The tile to check as a potential branch start
+
+        Returns:
+            bool: True if at least one neighbor can be the first branch step
+        """
+        x, y = tile.x, tile.y
+        directions = [(0, 1), (1, 0), (0, -1), (-1, 0)]  # up, right, down, left
+
+        # Check if at least one neighbor direction is viable as a first step
+        for dx, dy in directions:
+            nx, ny = x + dx, y + dy
+
+            # Check bounds
+            if not (0 <= nx < self.width and 0 <= ny < self.height):
+                continue
+
+            neighbor = self.map[ny][nx]
+
+            # Must be empty
+            if neighbor.color != 0:
+                continue
+
+            # Create a temporary path dict with just this neighbor
+            temp_path = {(nx, ny): neighbor}
+
+            # With the fix (count == 4), this will now pass for T-junctions
+            if not self.check_2x2_path_cluster(neighbor, temp_path):
+                return True
+
+        return False
+
+    def branch_path_generation(self, start_tile, end_tile):
+        """
+        Generates a branching path from start_tile to an existing path tile
+        with length constraints based on difficulty.
+        """
+        '''Initialize variables for branch generation'''
+        visited = set()
+        path = {}
+
+        '''Define relative parameters'''
+        scales, detour_chance = get_path_scale_and_detour(self.difficulty)
+
+        # Calculate the baseline distance for the constraints
+        shortest_path_length = start_tile.shortest_path_to(end_tile)
+
+        # Define the allowed range
+        min_len = scales[0] * shortest_path_length
+        max_len = scales[1] * shortest_path_length
+
+        '''Generate the branch path until successful'''
+        max_attempts = 10
+        attempts = 0
+        success = False
+
+        while attempts < max_attempts:
+            visited = set()
+            path = {}
+
+            # Attempt to generate a path
+            path_found = self.recursive_path_helper(end_tile, start_tile, visited, path, detour_chance)
+
+            # If a path was found, validate its length
+            if path_found:
+                if min_len < len(path) < max_len:
+                    success = True
+                    break
+                else:
+                    # Path found, but length is invalid.
+                    # Loop continues, acting as a retry.
+                    pass
+
+            attempts += 1
+
+        if not success:
+            return {}
+
+        # Color the branch path (preserve existing paths and spawns/goals)
+        for t in path.values():
+            if t.get_state() not in ['spawn', 'goal']:
+                t.set_state('path')
+
+        # Ensure start_tile retains its spawn/goal state
+        if start_tile in self.spawns:
+            start_tile.set_state('spawn')
+        elif start_tile in self.goals:
+            start_tile.set_state('goal')
+
+        # Ensure end_tile retains path state (it should already be path)
+        if end_tile.get_state() == 'path':
+            end_tile.set_state('path')
+
+        return path
+
 
 
 
