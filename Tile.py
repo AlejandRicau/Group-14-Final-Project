@@ -1,5 +1,7 @@
-class Tile:
+import arcade
+class Tile(arcade.Sprite):
     def __init__(self, x, y, state='empty'):
+        super().__init__()
         self.x = x
         self.y = y
         self._state = state  # Only track the state
