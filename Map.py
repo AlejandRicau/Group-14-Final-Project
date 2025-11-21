@@ -188,50 +188,36 @@ class Map:
         Recursive DFS helper function with debug prints.
         """
         indent = "  " * depth  # Visualize recursion depth
-        print(f"{indent}Visiting tile ({tile.x}, {tile.y}), state={tile.get_state()}")
 
         # Base cases
         if tile.get_state() == "path":
-            print(f"{indent}Rejected: tile is 'path'")
             return False
         if tile.get_state() == 'border':
-            print(f"{indent}Rejected: tile is 'border'")
             return False
         if (tile.x, tile.y) in visited:
-            print(f"{indent}Rejected: tile already visited")
             return False
         if self.check_2x2_path_cluster(tile, path):
-            print(f"{indent}Rejected: tile forms 2x2 path cluster")
             return False
         if self.check_too_many_adjacent_neighbors(tile, path):
-            print(f"{indent}Rejected: too many adjacent neighbors")
             return False
 
-        print(f"{indent}Adding tile to visited: ({tile.x}, {tile.y})")
         visited.add((tile.x, tile.y))
         path[(tile.x, tile.y)] = tile
-        print(f"{indent}Added tile to path: ({tile.x}, {tile.y})")
 
         # Goal check
         if tile == goal_tile:
-            print(f"{indent}Goal reached at ({tile.x}, {tile.y})!")
             return True
 
         # Get directions (goal-directed, optionally detouring)
         directions = self.get_shuffled_directions_toward_goal(tile, detour_chance)
-        print(f"{indent}Exploring directions: {directions}")
         for direction in directions:
             neighbor = self.get_neighboring_tile(tile, direction)
             if neighbor:
-                print(f"{indent}Trying neighbor ({neighbor.x}, {neighbor.y}) in direction {direction}")
                 if self.recursive_path_helper(neighbor, goal_tile, visited, path, detour_chance, depth + 1):
                     return True
-            else:
-                print(f"{indent}No neighbor in direction {direction}")
 
         # Backtrack
         del path[(tile.x, tile.y)]
-        print(f"{indent}Backtracking from ({tile.x}, {tile.y})")
         return False
 
     def get_shuffled_directions_toward_goal(self, tile, detour_chance=0.4):
@@ -309,6 +295,24 @@ class Map:
 
         # Return None if we hit a wall
         return None
+
+    def get_surrounding_tiles(self, tile):
+        """
+        Returns a list of all tiles surrounding the given tile.
+
+        Args:
+            tile (Tile): The tile to find neighbors for
+
+        Returns:
+            list: A list of all tiles surrounding the given tile [[1 2 3][4 5 6][7 8 9]].flatten
+        """
+        x = tile.x
+        y = tile.y
+        res = []
+        for row in [-1, 0, 1]:
+            for each in [-1, 0, 1]:
+                res.append(self.map[y + row][x + each])
+        return res
 
     def clear_map(self):
         """Clears the map of all paths."""

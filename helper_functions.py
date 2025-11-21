@@ -82,3 +82,21 @@ def distance_measure(x1, y1, x2, y2):
         float: Euclidean distance between the two points
     """
     return math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
+
+def pixel_to_tile(x, y, tile_size):
+    """
+    Convert pixel coordinates (x, y) to tile coordinates (tx, ty),
+    assuming (0,0) in pixels is the bottom-left of tile (0,0).
+
+    Args:
+        x (float): pixel x-coordinate
+        y (float): pixel y-coordinate
+        tile_size (int): size of one tile in pixels
+
+    Returns:
+        (int, int): tile coordinates (tx, ty)
+    """
+    tx = int(x // tile_size)
+    ty = int(y // tile_size)
+    return tx, ty
+

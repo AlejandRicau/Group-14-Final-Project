@@ -1,11 +1,13 @@
 from constants import *
 from helper_functions import *
 from Enemy import Enemy
+import arcade
 
-class Tower:
+class Tower(arcade.Sprite):
     def __init__(self, tile, range_r, freq):
+        super().__init__()
         self.tile = tile
-        self.center_px = tile_to_pixel_center(tile.x, tile.y, TILE_SIZE)
+        self.center_x, self.center_y = tile_to_pixel_center(tile.x, tile.y, TILE_SIZE)
         self.level = 1
         self.range = range_r
         self.frequency = freq
@@ -53,3 +55,7 @@ class Tower:
                 closest_enemy = enemy
         return closest_enemy
 
+class BaseTower(Tower):
+    def __init__(self, tile):
+        super().__init__(tile, range_r=1, freq=1)
+        self.texture = TOWER_TEXTURES['base']
