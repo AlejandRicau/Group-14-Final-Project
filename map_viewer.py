@@ -9,7 +9,7 @@ class MapViewer(arcade.Window):
         arcade.set_background_color(arcade.color.DARK_SLATE_GRAY)
 
         self.tile_size = tile_size
-        self.map = Map(width, height)
+        self.map = Map(width, height,difficulty=2)
         self.camera = arcade.camera.Camera2D()
 
         self.sprite_list = arcade.SpriteList()
@@ -57,7 +57,7 @@ class MapViewer(arcade.Window):
             self.rebuild_sprite_list()
 
         elif symbol == arcade.key.E:
-            self.map.expand_map(add_width=6, add_height=6, add_new_spawns_goals=False)
+            self.map.expand_map(add_width=6, add_height=6)
             self.rebuild_sprite_list()
 
         elif symbol == arcade.key.F:
