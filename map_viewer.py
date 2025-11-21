@@ -12,6 +12,11 @@ class MapViewer(arcade.Window):
         self.map = Map(width, height)
         self.camera = arcade.camera.Camera2D()
 
+        self.sprite_list = arcade.SpriteList()
+        for row in self.map.map:  # map.map is your 2D tile matrix
+            for tile in row:
+                self.sprite_list.append(tile)
+
         # camera control parameters
         self.camera_speed = 20
         self.keys_held = set()
@@ -19,33 +24,7 @@ class MapViewer(arcade.Window):
     def on_draw(self):
         self.clear()
         self.camera.use()
-
-        for y in range(self.map.height):
-            for x in range(self.map.width):
-                cell = self.map.map[y][x]
-                if cell.color == 0:
-                    color = COLOR_EMPTY
-                elif cell.color == 1:
-                    color = COLOR_PATH
-                elif cell.color == 2:
-                    color = COLOR_SPAWN
-                elif cell.color == 3:
-                    color = COLOR_GOAL
-                elif cell.color == 4:
-                    color = COLOR_BORDER
-                else:
-                    color = arcade.color.BLACK
-
-                # keep your original grid look
-                rect = arcade.rect.LBWH(
-                    x * self.tile_size,
-                    y * self.tile_size,
-                    self.tile_size - 1,
-                    self.tile_size - 1
-                )
-                arcade.draw_rect_filled(rect, color)
-
-
+        self.sprite_list.draw()             # draw all sprites
 
     def on_update(self, delta_time: float):
         # smooth camera movement
@@ -68,21 +47,26 @@ class MapViewer(arcade.Window):
 
         if symbol == arcade.key.M:
             self.map.generate_new_map()
+            self.rebuild_sprite_list()
 
         elif symbol == arcade.key.P:
             self.map.recursive_path_generation(
                 self.map.spawns[0],
                 self.map.goals[0]
             )
+            self.rebuild_sprite_list()
 
         elif symbol == arcade.key.E:
             self.map.expand_map(add_width=6, add_height=6, add_new_spawns_goals=False)
+            self.rebuild_sprite_list()
 
         elif symbol == arcade.key.F:
             self.map.generate_new_special_point("spawn")
+            self.rebuild_sprite_list()
 
         elif symbol == arcade.key.G:
             self.map.generate_new_special_point("goal")
+            self.rebuild_sprite_list()
 
         elif symbol == arcade.key.ESCAPE:
             self.close()
@@ -90,6 +74,15 @@ class MapViewer(arcade.Window):
     def on_key_release(self, symbol, modifiers):
         if symbol in self.keys_held:
             self.keys_held.remove(symbol)
+
+    def rebuild_sprite_list(self):
+        """Rebuilds the sprite list from the map"""
+        self.sprite_list.clear()
+        for row in self.map.map:
+            for tile in row:
+                tile.update_texture()  # ensure the texture matches the state
+                self.sprite_list.append(tile)
+
 
 
 def main():

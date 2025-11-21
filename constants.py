@@ -1,4 +1,5 @@
 import arcade
+from PIL import Image
 import random
 
 TILE_SIZE = 20
@@ -12,6 +13,25 @@ COLOR_SPAWN = arcade.color.BLUE
 COLOR_GOAL = arcade.color.RED
 COLOR_BORDER = arcade.color.DARK_BROWN
 COLOR_TOWER = arcade.color.YELLOW
+
+# Map each state to an RGBA color
+TILE_COLORS = {
+    "empty": (*arcade.color.LIGHT_GRAY[:3], 255),
+    "path": (*arcade.color.SEA_GREEN[:3], 255),
+    "spawn": (*arcade.color.BLUE[:3], 255),
+    "goal": (*arcade.color.RED[:3], 255),
+    "border": (*arcade.color.DARK_BROWN[:3], 255),
+    "tower": (*arcade.color.YELLOW[:3], 255),
+}
+
+# Pre-generate textures for each state using PIL
+TILE_TEXTURES = {
+    state: arcade.Texture(
+        name=f"tile-{state}",
+        image=Image.new("RGBA", (TILE_SIZE, TILE_SIZE), color)
+    )
+    for state, color in TILE_COLORS.items()
+}
 
 '''Spawn and Goal distance from the edge'''
 # This is to ensure that the spawn and goal are not on the edge

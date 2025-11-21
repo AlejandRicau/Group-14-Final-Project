@@ -13,11 +13,13 @@ class Tile(arcade.Sprite):
         self._state = state  # Only track the state
         self.tower = None
 
+        self.update_texture()
+
     def __str__(self):
         return f"({self.x}, {self.y}, self.{self._state})"
 
     def matrix_to_pixel_position(self):
-        self.px_x, self.px_y = tile_to_pixel_center(self.x, self.y, TILE_SIZE)
+        self.center_x, self.center_y = tile_to_pixel_center(self.x, self.y, TILE_SIZE)
 
     def set_state(self, state):
         """Set the tile's state. Valid states: 'spawn', 'goal', 'border', 'path', 'empty'."""
@@ -25,10 +27,11 @@ class Tile(arcade.Sprite):
         if state not in valid_states:
             raise ValueError(f"Invalid state: {state}. Must be one of {valid_states}")
         self._state = state
+        self.update_texture()
 
     def clear_state(self):
         """Clear the tile's state."""
-        self._state = 'empty'
+        self.set_state('empty')
 
     def get_state(self):
         """Return the current state of the tile."""
@@ -43,18 +46,5 @@ class Tile(arcade.Sprite):
         dy = abs(self.y - other_tile.y)
         return dx + dy + 1  # include start and goal tiles
 
-    @property
-    def color(self):
-        """Return color based on state."""
-        if self._state == 'border':
-            return 4
-        elif self._state == 'goal':
-            return 3
-        elif self._state == 'spawn':
-            return 2
-        elif self._state == 'path':
-            return 1
-        elif self._state == 'empty':
-            return 0
-        else:
-            raise ValueError(f"Invalid state: {self._state}")
+    def update_texture(self):
+        self.texture = TILE_TEXTURES[self._state]

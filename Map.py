@@ -183,38 +183,55 @@ class Map:
             goal.set_state('goal')
         return path
 
-    def recursive_path_helper(self, tile, goal_tile, visited, path, detour_chance):
+    def recursive_path_helper(self, tile, goal_tile, visited, path, detour_chance, depth=0):
         """
-        Recursive DFS helper function.
+        Recursive DFS helper function with debug prints.
         """
+        indent = "  " * depth  # Visualize recursion depth
+        print(f"{indent}Visiting tile ({tile.x}, {tile.y}), state={tile.get_state()}")
+
         # Base cases
-        if tile.get_state() == path:
+        if tile.get_state() == "path":
+            print(f"{indent}Rejected: tile is 'path'")
             return False
         if tile.get_state() == 'border':
+            print(f"{indent}Rejected: tile is 'border'")
+            return False
+        if (tile.x, tile.y) in visited:
+            print(f"{indent}Rejected: tile already visited")
             return False
         if self.check_2x2_path_cluster(tile, path):
+            print(f"{indent}Rejected: tile forms 2x2 path cluster")
             return False
         if self.check_too_many_adjacent_neighbors(tile, path):
-            return False  # <-- NEW check
-        if (tile.x, tile.y) in visited:
+            print(f"{indent}Rejected: too many adjacent neighbors")
             return False
 
+        print(f"{indent}Adding tile to visited: ({tile.x}, {tile.y})")
         visited.add((tile.x, tile.y))
         path[(tile.x, tile.y)] = tile
+        print(f"{indent}Added tile to path: ({tile.x}, {tile.y})")
 
         # Goal check
         if tile == goal_tile:
+            print(f"{indent}Goal reached at ({tile.x}, {tile.y})!")
             return True
 
         # Get directions (goal-directed, optionally detouring)
         directions = self.get_shuffled_directions_toward_goal(tile, detour_chance)
+        print(f"{indent}Exploring directions: {directions}")
         for direction in directions:
             neighbor = self.get_neighboring_tile(tile, direction)
-            if neighbor and self.recursive_path_helper(neighbor, goal_tile, visited, path, detour_chance):
-                return True
+            if neighbor:
+                print(f"{indent}Trying neighbor ({neighbor.x}, {neighbor.y}) in direction {direction}")
+                if self.recursive_path_helper(neighbor, goal_tile, visited, path, detour_chance, depth + 1):
+                    return True
+            else:
+                print(f"{indent}No neighbor in direction {direction}")
 
         # Backtrack
         del path[(tile.x, tile.y)]
+        print(f"{indent}Backtracking from ({tile.x}, {tile.y})")
         return False
 
     def get_shuffled_directions_toward_goal(self, tile, detour_chance=0.4):
@@ -352,7 +369,7 @@ class Map:
                     neighbor_tile = self.map[ny][nx]
 
                     # Count tiles that are either already colored (walls/final path) or in current DFS path
-                    if neighbor_tile.color != 0 or (nx, ny) in path:
+                    if neighbor_tile.get_state() != 'empty' or (nx, ny) in path:
                         count += 1
 
             if count == 4:
