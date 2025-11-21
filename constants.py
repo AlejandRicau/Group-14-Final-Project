@@ -28,9 +28,17 @@ TILE_COLORS = {
 TILE_TEXTURES = {
     state: arcade.Texture(
         name=f"tile-{state}",
-        image=Image.new("RGBA", (TILE_SIZE, TILE_SIZE), color)
+        image=Image.new("RGBA", (TILE_SIZE-1, TILE_SIZE-1), color)
     )
     for state, color in TILE_COLORS.items()
+}
+
+# Tower textures
+TOWER_TEXTURES = {
+    "base": arcade.Texture(
+        name="base",
+        image=Image.new("RGBA", (TILE_SIZE-5, TILE_SIZE-5), (*arcade.color.PURPLE[:3], 255))
+    )
 }
 
 '''Spawn and Goal distance from the edge'''

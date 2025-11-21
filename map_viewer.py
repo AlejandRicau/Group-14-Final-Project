@@ -1,6 +1,8 @@
 from constants import *
+from helper_functions import *
 from Map import Map
 import arcade
+from Tower import BaseTower
 
 
 class MapViewer(arcade.Window):
@@ -9,13 +11,15 @@ class MapViewer(arcade.Window):
         arcade.set_background_color(arcade.color.DARK_SLATE_GRAY)
 
         self.tile_size = tile_size
-        self.map = Map(width, height,difficulty=2)
+        self.map = Map(width, height)
         self.camera = arcade.camera.Camera2D()
 
-        self.sprite_list = arcade.SpriteList()
+        self.background_list = arcade.SpriteList()
         for row in self.map.map:  # map.map is your 2D tile matrix
             for tile in row:
-                self.sprite_list.append(tile)
+                self.background_list.append(tile)
+
+        self.tower_list = arcade.SpriteList()
 
         # camera control parameters
         self.camera_speed = 20
@@ -24,7 +28,8 @@ class MapViewer(arcade.Window):
     def on_draw(self):
         self.clear()
         self.camera.use()
-        self.sprite_list.draw()             # draw all sprites
+        self.background_list.draw()
+        self.tower_list.draw()
 
     def on_update(self, delta_time: float):
         # smooth camera movement
@@ -47,26 +52,30 @@ class MapViewer(arcade.Window):
 
         if symbol == arcade.key.M:
             self.map.generate_new_map()
-            self.rebuild_sprite_list()
+            self.rebuild_background_list()
+            self.tower_list.clear()
 
         elif symbol == arcade.key.P:
             self.map.recursive_path_generation(
                 self.map.spawns[0],
                 self.map.goals[0]
             )
-            self.rebuild_sprite_list()
+            self.rebuild_background_list()
 
         elif symbol == arcade.key.E:
-            self.map.expand_map(add_width=6, add_height=6)
-            self.rebuild_sprite_list()
+            self.map.expand_map(add_width=6, add_height=6, add_new_spawns_goals=False)
+            self.rebuild_background_list()
 
         elif symbol == arcade.key.F:
             self.map.generate_new_special_point("spawn")
-            self.rebuild_sprite_list()
+            self.rebuild_background_list()
 
         elif symbol == arcade.key.G:
             self.map.generate_new_special_point("goal")
-            self.rebuild_sprite_list()
+            self.rebuild_background_list()
+
+        elif symbol == arcade.key.T:
+            self.keys_held.add(symbol)
 
         elif symbol == arcade.key.ESCAPE:
             self.close()
@@ -75,14 +84,64 @@ class MapViewer(arcade.Window):
         if symbol in self.keys_held:
             self.keys_held.remove(symbol)
 
-    def rebuild_sprite_list(self):
+    def on_mouse_press(self, x: int, y: int, button: int, modifiers: int):
+        if button == arcade.MOUSE_BUTTON_LEFT:
+            self.add_tower(x, y)
+
+    def rebuild_background_list(self):
         """Rebuilds the sprite list from the map"""
-        self.sprite_list.clear()
+        self.background_list.clear()
         for row in self.map.map:
             for tile in row:
                 tile.update_texture()  # ensure the texture matches the state
-                self.sprite_list.append(tile)
+                self.background_list.append(tile)
 
+    def add_tower(self, mouse_x, mouse_y):
+        """
+        Adds a tower to the map at the tile hovered by the mouse if T is held.
+
+        Args:
+            mouse_x (int): The x-coordinate of the mouse
+            mouse_y (int): The y-coordinate of the mouse
+        """
+        # convert mouse position to tile position and find the tile_curr
+        tx, ty = pixel_to_tile(mouse_x, mouse_y, self.tile_size)
+        tile_hovered = self.map.map[ty][tx]
+
+        # check validity
+        if not self.is_valid_tower_location(tile_hovered):
+            return
+
+        # check if T is held
+        if arcade.key.T not in self.keys_held:
+            return
+
+        # add tower
+        tower = BaseTower(tile_hovered)
+        self.tower_list.append(tower)
+
+    def is_valid_tower_location(self, tile):
+        """
+        Returns True if the tile is a valid location for a tower.
+
+        Args:
+            tile (Tile): The tile to check
+
+        Returns:
+            bool: True if the tile is a valid location for a tower, False otherwise
+        """
+        # initialize the bool value
+        valid = False
+
+        # check if the tile is next to a path
+        surrounding_tiles = self.map.get_surrounding_tiles(tile)
+        for idx, t in enumerate(surrounding_tiles):
+            if idx == len(surrounding_tiles) // 2:      # the tile hovered
+                if t.get_state() != 'empty':        # the tile hovered cannot be  empty
+                    return False
+            if t.get_state() == 'path':     # the tile hovered cannot be next to a path
+                valid = True
+        return valid
 
 
 def main():

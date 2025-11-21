@@ -78,7 +78,7 @@ class Map:
 
         return self.map[spawn_y][spawn_x], self.map[goal_y][goal_x]
 
-    def expand_map(self, add_width=0, add_height=0):
+    def expand_map(self, add_width=0, add_height=0, add_new_spawns_goals=False):
         """
         Expands the current map outward by the given width and height increments.
         Keeps existing spawns, goals, and tiles in the center of the new map.
@@ -130,6 +130,16 @@ class Map:
         # --- Rebuild the outer border ---
         self.make_border()
 
+        # --- Optionally add new spawns/goals ---
+        if add_new_spawns_goals:
+            spawn_tile, goal_tile = self.generate_opposite_side_positions(offset=SPAWN_GOAL_DISTANCE_FROM_EDGE)
+            spawn_tile.set_state('spawn')
+            spawn_tile.color = 2
+            goal_tile.set_state('goal')
+            goal_tile.color = 3
+            self.spawns.append(spawn_tile)
+            self.goals.append(goal_tile)
+
     def recursive_path_generation(self, start_tile, end_tile):
         """
             Generates a path from start_tile to goal_tile using DFS.
@@ -175,24 +185,15 @@ class Map:
 
     def recursive_path_helper(self, tile, goal_tile, visited, path, detour_chance, depth=0):
         """
-        Recursive DFS helper function.
+        Recursive DFS helper function with debug prints.
         """
-        # 1. --- CRITICAL FIX: Check for Goal FIRST ---
-        # If we reached the target (even if it's a path), we succeed.
-        if tile == goal_tile:
-            # We don't add this to 'path' dict if it's an existing path tile (branching),
-            # but for visualization or logic consistency, adding it usually doesn't hurt
-            # provided you don't overwrite its state later erroneously.
-            path[(tile.x, tile.y)] = tile
-            return True
+        indent = "  " * depth  # Visualize recursion depth
 
-        # 2. --- Check invalid states ---
+        # Base cases
         if tile.get_state() == "path":
             return False
         if tile.get_state() == 'border':
             return False
-
-        # 3. --- Check history and geometry ---
         if (tile.x, tile.y) in visited:
             return False
         if self.check_2x2_path_cluster(tile, path):
@@ -203,7 +204,11 @@ class Map:
         visited.add((tile.x, tile.y))
         path[(tile.x, tile.y)] = tile
 
-        # 4. --- Recursion ---
+        # Goal check
+        if tile == goal_tile:
+            return True
+
+        # Get directions (goal-directed, optionally detouring)
         directions = self.get_shuffled_directions_toward_goal(tile, detour_chance)
         for direction in directions:
             neighbor = self.get_neighboring_tile(tile, direction)
@@ -290,6 +295,24 @@ class Map:
 
         # Return None if we hit a wall
         return None
+
+    def get_surrounding_tiles(self, tile):
+        """
+        Returns a list of all tiles surrounding the given tile.
+
+        Args:
+            tile (Tile): The tile to find neighbors for
+
+        Returns:
+            list: A list of all tiles surrounding the given tile [[1 2 3][4 5 6][7 8 9]].flatten
+        """
+        x = tile.x
+        y = tile.y
+        res = []
+        for row in [-1, 0, 1]:
+            for each in [-1, 0, 1]:
+                res.append(self.map[y + row][x + each])
+        return res
 
     def clear_map(self):
         """Clears the map of all paths."""
@@ -523,7 +546,7 @@ class Map:
             neighbor = self.map[ny][nx]
 
             # Must be empty
-            if neighbor.get_state() != 'empty':
+            if neighbor.color != 0:
                 continue
 
             # Create a temporary path dict with just this neighbor
