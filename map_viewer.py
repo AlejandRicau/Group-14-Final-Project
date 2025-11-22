@@ -13,6 +13,8 @@ class MapViewer(arcade.Window):
         self.tile_size = tile_size
         self.map = Map(width, height)
         self.camera = arcade.camera.Camera2D()
+        self.camera_offset_x = 0
+        self.camera_offset_y = 0
 
         self.background_list = arcade.SpriteList()
         for row in self.map.map:  # map.map is your 2D tile matrix
@@ -32,7 +34,9 @@ class MapViewer(arcade.Window):
         self.tower_list.draw()
 
     def on_update(self, delta_time: float):
-        # smooth camera movement
+        """Updates the camera position based on the keys held."""
+
+        '''Smooth camera movement'''
         dx = dy = 0
         if arcade.key.LEFT in self.keys_held:
             dx -= self.camera_speed
@@ -105,8 +109,10 @@ class MapViewer(arcade.Window):
             mouse_y (int): The y-coordinate of the mouse
         """
         # convert mouse position to tile position and find the tile_curr
-        tx, ty = pixel_to_tile(mouse_x, mouse_y, self.tile_size)
+        world_x, world_y, _ = self.camera.unproject((mouse_x, mouse_y, 0))
+        tx, ty = pixel_to_tile(world_x, world_y, self.tile_size)
         tile_hovered = self.map.map[ty][tx]
+        print(tile_hovered)
 
         # check validity
         if not self.is_valid_tower_location(tile_hovered):
