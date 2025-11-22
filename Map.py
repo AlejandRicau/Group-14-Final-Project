@@ -184,48 +184,93 @@ class Map:
         return path
 
         # Note the new argument: parent_tile=None
-    def recursive_path_helper(self, tile, goal_tile, visited, path, detour_chance, depth=0, parent_tile=None):
+
+    def recursive_path_helper(self, start_tile, goal_tile, visited, path, detour_chance, depth=0, parent_tile=None):
         """
-        Recursive DFS helper function with Strict Adjacency.
+        Iterative DFS (Depth First Search).
+        Uses a stack to simulate recursion, avoiding RecursionError on large maps.
         """
-        # 1. --- Goal Check ---
+        # Get initial directions for the start tile
+        initial_dirs = self.get_shuffled_directions_toward_goal(start_tile, goal_tile, detour_chance)
+
+        # Stack stores context: [current_tile, parent_tile, directions_list]
+        stack = [[start_tile, parent_tile, initial_dirs]]
+
+        # Mark start as visited immediately
+        visited.add((start_tile.x, start_tile.y))
+        path[(start_tile.x, start_tile.y)] = start_tile
+
+        while stack:
+            # Peek at the current context (Do not pop yet, we need to know if we must backtrack)
+            current_context = stack[-1]
+            tile, parent, directions = current_context
+
+            # 1. Check if we found the goal
+            if tile == goal_tile:
+                return True
+
+            # 2. Try to find a valid move from the remaining directions
+            found_valid_move = False
+
+            while directions:
+                direction = directions.pop(0)  # Get the next direction
+                neighbor = self.get_neighboring_tile(tile, direction)
+
+                if not neighbor:
+                    continue
+
+                # Check if this neighbor is valid
+                if self._check_tile_validity(neighbor, tile, goal_tile, visited, path):
+                    # Valid move found!
+
+                    # Add to path/visited
+                    visited.add((neighbor.x, neighbor.y))
+                    path[(neighbor.x, neighbor.y)] = neighbor
+
+                    # Generate directions for this NEW tile
+                    new_dirs = self.get_shuffled_directions_toward_goal(neighbor, goal_tile, detour_chance)
+
+                    # Push new context to stack
+                    stack.append([neighbor, tile, new_dirs])
+
+                    found_valid_move = True
+                    break  # Break the inner loop to process the new tile in the outer loop
+
+            # 3. If no valid moves were found for this tile (Dead End)
+            if not found_valid_move:
+                # Backtrack: Remove from path and pop from stack
+                del path[(tile.x, tile.y)]
+                stack.pop()
+                # Note: We keep it in 'visited' to prevent revisiting dead ends
+
+        return False
+
+    def _check_tile_validity(self, tile, parent, goal_tile, visited, path):
+        """
+        Helper to validate if a tile can be stepped onto.
+        Returns True if valid, False if invalid.
+        """
+        # 1. Goal Exception: If it's the goal, it's always valid (even if it's technically a path)
         if tile == goal_tile:
             return True
 
-        # 2. --- State Checks ---
+        # 2. Basic State Checks
         if tile.get_state() in ["path", "border"]:
             return False
+
+        # 3. History Check
         if (tile.x, tile.y) in visited:
             return False
 
-        # 3. --- Geometric Checks ---
+        # 4. Strict Adjacency (The anti-hugging rule)
+        if self.check_strict_adjacency(tile, parent, goal_tile, path):
+            return False
+
+        # 5. Cluster Check
         if self.check_2x2_path_cluster(tile, path):
             return False
 
-        # --- NEW STRICT CHECK ---
-        # Replaces check_too_many_adjacent_neighbors
-        if self.check_strict_adjacency(tile, parent_tile, goal_tile, path):
-            return False
-
-        # Mark visited
-        visited.add((tile.x, tile.y))
-        path[(tile.x, tile.y)] = tile
-
-        # 4. --- Recursion ---
-        # Pass the current goal_tile logic we fixed previously
-        directions = self.get_shuffled_directions_toward_goal(tile, goal_tile, detour_chance)
-
-        for direction in directions:
-            neighbor = self.get_neighboring_tile(tile, direction)
-            if neighbor:
-                # PASS 'tile' as the 'parent_tile' for the next step
-                if self.recursive_path_helper(neighbor, goal_tile, visited, path, detour_chance, depth + 1,
-                                              parent_tile=tile):
-                    return True
-
-        # Backtrack
-        del path[(tile.x, tile.y)]
-        return False
+        return True
 
     def get_shuffled_directions_toward_goal(self, tile, target_tile, detour_chance=0.4):
         """Returns a list of directions toward the goal, shuffled with
