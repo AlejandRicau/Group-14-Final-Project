@@ -567,21 +567,19 @@ class Map:
     def branch_path_generation(self, start_tile, end_tile):
         """
         Generates a branching path with a 'Best Effort' fallback.
-        If a path within the length range isn't found, returns the closest match.
+        Prioritizes short paths over overly long paths if a perfect match isn't found.
         """
         scales, detour_chance = get_path_scale_and_detour(self.difficulty)
         shortest_path_length = start_tile.shortest_path_to(end_tile)
 
-        # Target range
+        # Define the allowed range
         min_len = scales[0] * shortest_path_length
         max_len = scales[1] * shortest_path_length
-        target_len = (min_len + max_len) / 2
 
         # TRACKING VARIABLES
         best_path = {}
-        best_score = float('inf')  # Score = difference from target_len (lower is better)
+        best_score = float('inf')  # Lower score is better
 
-        # Reduce max attempts for speed (DFS is expensive)
         max_attempts = 5
         attempts = 0
 
@@ -600,18 +598,28 @@ class Map:
                     self._finalize_branch(path, start_tile, end_tile)
                     return path
 
-                # 2. Imperfect Match: Save if it's the best so far
-                diff = abs(current_len - target_len)
-                if diff < best_score:
-                    best_score = diff
-                    best_path = path.copy()  # Save a copy of the dictionary
+                # 2. Calculate Weighted Score
+                score = 0
+
+                if current_len < min_len:
+                    # Undershoot: Linear Penalty (1x)
+                    # A path 5 tiles too short adds 5 to the score.
+                    score = (min_len - current_len)
+                else:
+                    # Overshoot: Heavy Multiplier Penalty (3x)
+                    # A path 5 tiles too long adds 15 to the score.
+                    # This makes the algorithm HATE long paths.
+                    score = (current_len - max_len) * 3
+
+                # 3. Compare to best
+                if score < best_score:
+                    best_score = score
+                    best_path = path.copy()
 
             attempts += 1
 
         # Fallback: If we found ANY path, use the best one
         if best_path:
-            # Optional: Print a warning if debugging
-            # print(f"Warning: Using suboptimal path (Len: {len(best_path)} vs Target: {min_len}-{max_len})")
             self._finalize_branch(best_path, start_tile, end_tile)
             return best_path
 
