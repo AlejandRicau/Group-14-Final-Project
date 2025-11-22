@@ -183,19 +183,17 @@ class Map:
             goal.set_state('goal')
         return path
 
-    def recursive_path_helper(self, tile, goal_tile, visited, path, detour_chance, depth=0):
+        # Note the new argument: parent_tile=None
+    def recursive_path_helper(self, tile, goal_tile, visited, path, detour_chance, depth=0, parent_tile=None):
         """
-        Recursive DFS helper function.
+        Recursive DFS helper function with Strict Adjacency.
         """
-        # 1. --- CRITICAL FIX: Check for Goal FIRST ---
+        # 1. --- Goal Check ---
         if tile == goal_tile:
             return True
 
-        # 2. --- Check invalid states ---
-        # Reject if it's a path (and not the goal), border, or already visited
-        if tile.get_state() == "path":
-            return False
-        if tile.get_state() == 'border':
+        # 2. --- State Checks ---
+        if tile.get_state() in ["path", "border"]:
             return False
         if (tile.x, tile.y) in visited:
             return False
@@ -203,7 +201,10 @@ class Map:
         # 3. --- Geometric Checks ---
         if self.check_2x2_path_cluster(tile, path):
             return False
-        if self.check_too_many_adjacent_neighbors(tile, path):
+
+        # --- NEW STRICT CHECK ---
+        # Replaces check_too_many_adjacent_neighbors
+        if self.check_strict_adjacency(tile, parent_tile, goal_tile, path):
             return False
 
         # Mark visited
@@ -211,11 +212,15 @@ class Map:
         path[(tile.x, tile.y)] = tile
 
         # 4. --- Recursion ---
+        # Pass the current goal_tile logic we fixed previously
         directions = self.get_shuffled_directions_toward_goal(tile, goal_tile, detour_chance)
+
         for direction in directions:
             neighbor = self.get_neighboring_tile(tile, direction)
             if neighbor:
-                if self.recursive_path_helper(neighbor, goal_tile, visited, path, detour_chance, depth + 1):
+                # PASS 'tile' as the 'parent_tile' for the next step
+                if self.recursive_path_helper(neighbor, goal_tile, visited, path, detour_chance, depth + 1,
+                                              parent_tile=tile):
                     return True
 
         # Backtrack
@@ -380,28 +385,42 @@ class Map:
 
         return False
 
-    def check_too_many_adjacent_neighbors(self, tile, path):
+    def check_strict_adjacency(self, tile, parent_tile, goal_tile, current_path_dict):
         """
-        Checks if a tile has more than 1 adjacent neighbor (up, down, left, right)
-        that is already part of the path.
-
-        Args:
-            tile (Tile): The tile to check
-            path (dict): Current DFS path
-
-        Returns:
-            bool: True if tile has >1 adjacent path neighbors, False otherwise
+        Ensures a tile does not 'hug' existing paths.
+        A tile is valid ONLY if its orthogonal neighbors are clear,
+        except for the parent (where we came from) and the goal (where we go).
         """
-        x, y = tile.x, tile.y
-        directions = [(0, 1), (1, 0), (0, -1), (-1, 0)]  # up, right, down, left
-        count = 0
+        # Get orthogonal neighbors (Up, Down, Left, Right)
+        directions = [(0, 1), (1, 0), (0, -1), (-1, 0)]
 
         for dx, dy in directions:
-            nx, ny = x + dx, y + dy
-            if (nx, ny) in path:
-                count += 1
+            nx, ny = tile.x + dx, tile.y + dy
 
-        return count > 1
+            # Check Bounds
+            if not (0 <= nx < self.width and 0 <= ny < self.height):
+                continue
+
+            neighbor = self.map[ny][nx]
+
+            # EXCEPTION 1: Ignore the parent (the tile we just stepped off of)
+            if parent_tile and neighbor == parent_tile:
+                continue
+
+            # EXCEPTION 2: Ignore the goal (we MUST touch it to finish)
+            if neighbor == goal_tile:
+                continue
+
+            # CHECK: Is this neighbor an obstacle?
+            # 1. Is it part of the OLD map (path/spawn/goal)?
+            if neighbor.get_state() in ['path', 'spawn', 'goal']:
+                return True  # FAIL: We are hugging an existing path
+
+            # 2. Is it part of the NEW path we are currently generating?
+            if (nx, ny) in current_path_dict:
+                return True  # FAIL: We are hugging our own tail
+
+        return False
     
     def check_spawn_or_goal_nearby(self, tile, offset=DX_REGION_OF_ISOLATION):
         """
@@ -503,34 +522,24 @@ class Map:
 
     def check_valid_branch_start(self, tile, target_tile):
         """
-        Checks if a tile is a valid branch start by simulating the first step
-        TOWARDS the target.
-
-        Criteria:
-        1. Must move in a direction that reduces distance to target (Goal Oriented).
-        2. The step must be empty.
-        3. The step must not form a 2x2 cluster.
-        4. The step must not touch any OTHER path tiles (Isolation check).
+        Checks if a tile is a valid branch start.
         """
         x, y = tile.x, tile.y
 
-        # Determine preferred directions based on target location
+        # Determine preferred directions based on target
         preferred_directions = []
         if target_tile.x > x:
-            preferred_directions.append((1, 0))  # Right
+            preferred_directions.append((1, 0))
         elif target_tile.x < x:
-            preferred_directions.append((-1, 0))  # Left
-
+            preferred_directions.append((-1, 0))
         if target_tile.y > y:
-            preferred_directions.append((0, 1))  # Up
+            preferred_directions.append((0, 1))
         elif target_tile.y < y:
-            preferred_directions.append((0, -1))  # Down
+            preferred_directions.append((0, -1))
 
-        # We need at least ONE preferred direction to be valid
         for dx, dy in preferred_directions:
             nx, ny = x + dx, y + dy
 
-            # Bounds check
             if not (0 <= nx < self.width and 0 <= ny < self.height):
                 continue
 
@@ -540,20 +549,17 @@ class Map:
             if neighbor.get_state() != 'empty':
                 continue
 
-            # 2. Create temp path context for checks
-            temp_path = {(nx, ny): neighbor}
+            # 2. Strict Adjacency Check for the first step
+            # For the first step, the 'tile' (branch point) is the PARENT.
+            # We pass an empty dict {} for current_path because the branch hasn't started yet.
+            if self.check_strict_adjacency(neighbor, tile, target_tile, {}):
+                continue
 
             # 3. Cluster Check
+            temp_path = {(nx, ny): neighbor}
             if self.check_2x2_path_cluster(neighbor, temp_path):
                 continue
 
-            # 4. Adjacency Check (The "3x3" logic)
-            # We ensure this new neighbor ONLY touches the 'tile' we are branching from.
-            # If it touches other path parts, it's too crowded.
-            if self.check_too_many_adjacent_neighbors(neighbor, temp_path):
-                continue
-
-            # If we pass all checks for at least one preferred direction, this tile is valid.
             return True
 
         return False
