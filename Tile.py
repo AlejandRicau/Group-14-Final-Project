@@ -8,7 +8,6 @@ class Tile(arcade.Sprite):
         super().__init__()
         self.x = x
         self.y = y
-        self.grid_pos = (self.x, self.y)
         self.matrix_to_pixel_position()
 
         self._state = state  # Only track the state
@@ -49,3 +48,12 @@ class Tile(arcade.Sprite):
 
     def update_texture(self):
         self.texture = TILE_TEXTURES[self._state]
+
+    def link_tower(self, tower):
+        self.tower = tower
+
+    def update_position(self, grid_x, grid_y):
+        """Update the tile's position."""
+        self.x = grid_x
+        self.y = grid_y
+        self.matrix_to_pixel_position()

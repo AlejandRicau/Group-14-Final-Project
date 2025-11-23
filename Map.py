@@ -89,28 +89,33 @@ class Map:
             add_height (int): Number of tiles to add to the height.
             add_new_spawns_goals (bool): Whether to add new spawns and goals.
         """
-        # --- Compute new dimensions ---
+        # Compute new dimensions
         new_width = self.width + add_width
         new_height = self.height + add_height
 
-        # --- Create new tile grid ---
+        # Create empty new map matrix
         new_map = [[Tile(x, y) for x in range(new_width)] for y in range(new_height)]
 
-        # --- Center offset for placing old map inside new one ---
+        # Center offset for placing old map inside new one
         x_offset = (new_width - self.width) // 2
         y_offset = (new_height - self.height) // 2
 
         # --- Copy old tiles into new map ---
-        for y in range(self.height):
-            for x in range(self.width):
-                old_tile = self.map[y][x]
-                new_tile = new_map[y + y_offset][x + x_offset]
+        for y in range(new_height):
+            for x in range(new_width):
+                old_x = x - x_offset
+                old_y = y - y_offset
 
-                # Copy properties
-                try:
-                    new_tile.set_state(old_tile.get_state())
-                except ValueError:
-                    print(old_tile.get_state(), new_tile.get_state())
+                if 0 <= old_x < self.width and 0 <= old_y < self.height:
+                    # Copy old tile, update its coordinates
+                    old_tile = self.map[old_y][old_x]
+                    new_tile = old_tile
+                    new_tile.update_position(x, y)
+                else:
+                    # Create a new empty tile
+                    new_tile = Tile(x, y)
+
+                new_map[y][x] = new_tile
 
         # --- Clear all old borders that are now inside the new map ---
         for row in new_map:

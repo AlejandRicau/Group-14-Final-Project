@@ -22,6 +22,7 @@ class MapViewer(arcade.Window):
         self.background_list = arcade.SpriteList()
         self.tower_list = arcade.SpriteList()
         self.enemy_list = arcade.SpriteList()
+        self.range_display_list = arcade.SpriteList()
 
         # 1. blocking_sprites: Holds the actual tile sprites that block movement
         self.blocking_sprites = arcade.SpriteList(use_spatial_hash=True)
@@ -43,6 +44,8 @@ class MapViewer(arcade.Window):
         self.tower_list.draw()
         self.enemy_list.draw()
         self.blocking_sprites.draw_hit_boxes(color=arcade.color.PURPLE, line_thickness=2)
+        self.range_display_list.draw()
+        print(list(self.range_display_list))
 
     def on_update(self, delta_time: float):
         # Update all enemies
@@ -64,40 +67,73 @@ class MapViewer(arcade.Window):
             self.camera.position = (x + dx, y + dy)
 
     def on_mouse_press(self, x: int, y: int, button: int, modifiers: int):
-        # --- FIX: Use bottom_left position for camera ---
-        # We need the bottom-left corner to convert mouse pixels to world pixels.
-        camera_x = self.camera.bottom_left.x
-        camera_y = self.camera.bottom_left.y
+        """Functional response of mouse press"""
 
-        world_x = x + camera_x
-        world_y = y + camera_y
+        # convert mouse pos to world pos
+        world_point = self.camera.unproject((x, y))
+        world_x, world_y, _ = world_point  # `unproject` returns a Vec3
 
-        # Convert world pixels to grid coordinates
-        tx, ty = pixel_to_tile(world_x, world_y, self.tile_size)
+        # get the tile on the position
+        clicked_tile = arcade.get_sprites_at_point((world_x, world_y), self.background_list)[0]
 
-        # Bounds check
-        if not (0 <= tx < self.map.width and 0 <= ty < self.map.height):
-            return
-
-        clicked_tile = self.map.map[ty][tx]
-
-        # Debug print to verify coordinates
-        # print(f"Click: ({x}, {y}) -> World: ({world_x}, {world_y}) -> Tile: ({tx}, {ty}) -> State: {clicked_tile.get_state()}")
-
+        # mouse left click
         if button == arcade.MOUSE_BUTTON_LEFT:
-            print(f"clicked tile: {clicked_tile}")
+            # Debug print to verify coordinates
+            print(f"clicked tile: {clicked_tile}", end = "  ")
+            print(f"Tower: {bool(clicked_tile.tower)}")
+
             # Logic 1: Add Tower (If T is held)
             if arcade.key.T in self.keys_held:
-                self.add_tower(world_x, world_y)
+                self.add_tower(clicked_tile)
 
             # Logic 2: Spawn Enemy (If clicking on a SPAWN tile)
             elif clicked_tile.get_state() == 'spawn':
                 self.spawn_enemy_at_tile(clicked_tile)
 
+    def on_key_press(self, symbol, modifiers):
+        self.keys_held.add(symbol)
+
+        if symbol == arcade.key.M:
+            self.map.generate_new_map()
+            self.rebuild_background_list()
+            self.tower_list.clear()
+            self.enemy_list.clear()
+            self.range_display_list.clear()
+
+        elif symbol == arcade.key.P:
+            self.map.recursive_path_generation(
+                self.map.spawns[0],
+                self.map.goals[0]
+            )
+            self.rebuild_background_list()
+            self.enemy_list.clear()  # Paths changed, enemies invalid
+
+        elif symbol == arcade.key.E:
+            self.map.expand_map(add_width=6, add_height=6, add_new_spawns_goals=False)
+            self.rebuild_background_list()
+            self.enemy_list.clear()
+
+        elif symbol == arcade.key.F:
+            self.map.generate_new_special_point("spawn")
+            self.rebuild_background_list()
+
+        elif symbol == arcade.key.G:
+            self.map.generate_new_special_point("goal")
+            self.rebuild_background_list()
+
+        elif symbol == arcade.key.ESCAPE:
+            self.close()
+
+    def on_key_release(self, symbol, modifiers):
+        if symbol in self.keys_held:
+            self.keys_held.remove(symbol)
+
+
     def spawn_enemy_at_tile(self, start_tile):
         """
         Creates an enemy at the start_tile, calculates a path to a weighted random goal.
         """
+
         # 1. Select a goal
         target_goal = self.get_weighted_goal(start_tile)
         if not target_goal:
@@ -171,6 +207,8 @@ class MapViewer(arcade.Window):
         Rebuilds the sprite list for rendering AND the AStarBarrierList for pathfinding.
         """
         self.background_list.clear()
+        self.tower_list.clear()
+        self.range_display_list.clear()
 
         # --- FIX 1: Disable Spatial Hash for safety ---
         # Sometimes the hash doesn't update immediately for static tiles,
@@ -181,6 +219,10 @@ class MapViewer(arcade.Window):
             for tile in row:
                 tile.update_texture()
                 self.background_list.append(tile)
+                if tile.tower:
+                    tile.tower.update()
+                    self.tower_list.append(tile.tower)
+                    self.range_display_list.append(tile.tower.range_display)
 
                 # If a tile is NOT walkable, it is a barrier.
                 if tile.get_state() not in ['path', 'spawn', 'goal']:
@@ -200,22 +242,22 @@ class MapViewer(arcade.Window):
             top=self.map.height * self.tile_size
         )
 
-
-    def add_tower(self, mouse_x, mouse_y):
+    def add_tower(self, tile):
         """
         Adds a tower to the map at the tile hovered by the mouse.
         """
-        # convert mouse position to tile position and find the tile_curr
-        tx, ty = pixel_to_tile(mouse_x, mouse_y, self.tile_size)
-        tile_hovered = self.map.map[ty][tx]
-
         # check validity
-        if not self.is_valid_tower_location(tile_hovered):
+        if not self.is_valid_tower_location(tile):
             return
 
-        # add tower
-        tower = BaseTower(tile_hovered)
+        # add tower and link it to the tile
+        tower = BaseTower(tile)
+        tile.link_tower(tower)
+
+        # add tower to the tower list
         self.tower_list.append(tower)
+        self.range_display_list.append(tower.range_display)
+
 
     def is_valid_tower_location(self, tile):
         """
@@ -233,43 +275,6 @@ class MapViewer(arcade.Window):
                 valid = True
         return valid
 
-    def on_key_press(self, symbol, modifiers):
-        self.keys_held.add(symbol)
-
-        if symbol == arcade.key.M:
-            self.map.generate_new_map()
-            self.rebuild_background_list()
-            self.tower_list.clear()
-            self.enemy_list.clear()  # Clear enemies on new map
-
-        elif symbol == arcade.key.P:
-            self.map.recursive_path_generation(
-                self.map.spawns[0],
-                self.map.goals[0]
-            )
-            self.rebuild_background_list()
-            self.enemy_list.clear()  # Paths changed, enemies invalid
-
-        elif symbol == arcade.key.E:
-            self.map.expand_map(add_width=6, add_height=6, add_new_spawns_goals=False)
-            self.rebuild_background_list()
-            self.tower_list.clear()  # Towers might be misplaced on expand
-            self.enemy_list.clear()
-
-        elif symbol == arcade.key.F:
-            self.map.generate_new_special_point("spawn")
-            self.rebuild_background_list()
-
-        elif symbol == arcade.key.G:
-            self.map.generate_new_special_point("goal")
-            self.rebuild_background_list()
-
-        elif symbol == arcade.key.ESCAPE:
-            self.close()
-
-    def on_key_release(self, symbol, modifiers):
-        if symbol in self.keys_held:
-            self.keys_held.remove(symbol)
 
 
 def main():
