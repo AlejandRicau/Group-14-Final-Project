@@ -45,7 +45,6 @@ class MapViewer(arcade.Window):
         self.enemy_list.draw()
         self.blocking_sprites.draw_hit_boxes(color=arcade.color.PURPLE, line_thickness=2)
         self.range_display_list.draw()
-        print(list(self.range_display_list))
 
     def on_update(self, delta_time: float):
         # Update all enemies
@@ -84,7 +83,10 @@ class MapViewer(arcade.Window):
 
             # Logic 1: Add Tower (If T is held)
             if arcade.key.T in self.keys_held:
-                self.add_tower(clicked_tile)
+                if not clicked_tile.tower:
+                    self.add_tower(clicked_tile)
+                else:
+                    clicked_tile.tower.toggle_range_display()
 
             # Logic 2: Spawn Enemy (If clicking on a SPAWN tile)
             elif clicked_tile.get_state() == 'spawn':
