@@ -28,7 +28,7 @@ TILE_COLORS = {
 TILE_TEXTURES = {
     state: arcade.Texture(
         name=f"tile-{state}",
-        image=Image.new("RGBA", (TILE_SIZE-1, TILE_SIZE-1), color)
+        image=Image.new("RGBA", (TILE_SIZE, TILE_SIZE), color)
     )
     for state, color in TILE_COLORS.items()
 }

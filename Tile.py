@@ -1,5 +1,6 @@
 from helper_functions import *
 from constants import *
+from pyglet.math import Vec2
 import arcade
 
 class Tile(arcade.Sprite):

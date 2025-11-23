@@ -42,6 +42,7 @@ class MapViewer(arcade.Window):
         self.background_list.draw()
         self.tower_list.draw()
         self.enemy_list.draw()
+        self.blocking_sprites.draw_hit_boxes(color=arcade.color.PURPLE, line_thickness=2)
 
     def on_update(self, delta_time: float):
         # Update all enemies
@@ -125,7 +126,7 @@ class MapViewer(arcade.Window):
             start_tile.position,
             target_goal.position,
             self.astar_barrier_list,
-            diagonal_movement=False  # Reverting to False based on your orthogonal logic
+            diagonal_movement=False
         )
 
         if not path_pixels:
@@ -171,7 +172,9 @@ class MapViewer(arcade.Window):
         """
         self.background_list.clear()
 
-        # --- FIX 1: Re-create the list entirely to clear stale Spatial Hash data ---
+        # --- FIX 1: Disable Spatial Hash for safety ---
+        # Sometimes the hash doesn't update immediately for static tiles,
+        # causing them to be "invisible" to the pathfinder.
         self.blocking_sprites = arcade.SpriteList(use_spatial_hash=True)
 
         for row in self.map.map:
@@ -180,13 +183,12 @@ class MapViewer(arcade.Window):
                 self.background_list.append(tile)
 
                 # If a tile is NOT walkable, it is a barrier.
-                # We EXPLICITLY check the state to be sure.
-                state = tile.get_state()
-                if state not in ['path', 'spawn', 'goal']:
+                if tile.get_state() not in ['path', 'spawn', 'goal']:
                     self.blocking_sprites.append(tile)
 
-        # Create a tiny 1x1 dummy enemy for path calculation
-        dummy_enemy = arcade.SpriteSolidColor(width=1, height=1, color=arcade.color.WHITE)
+
+        # Create a tiny dummy enemy for path calculation (1x1 pixel)
+        dummy_enemy = arcade.SpriteSolidColor(width=int(0.9*TILE_SIZE), height=int(0.9*TILE_SIZE), color=arcade.color.WHITE)
 
         self.astar_barrier_list = arcade.AStarBarrierList(
             moving_sprite=dummy_enemy,
@@ -197,6 +199,7 @@ class MapViewer(arcade.Window):
             bottom=0,
             top=self.map.height * self.tile_size
         )
+
 
     def add_tower(self, mouse_x, mouse_y):
         """
