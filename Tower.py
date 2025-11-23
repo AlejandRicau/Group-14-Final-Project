@@ -34,6 +34,10 @@ class Tower(arcade.Sprite):
         # Make it semi-transparent
         self.range_display.alpha = 100  # 0 = fully invisible, 255 = fully opaque
 
+    def toggle_range_display(self):
+        """Hide or show the range display"""
+        self.range_display.visible = not self.range_display.visible
+
     def update(self, *args, **kwargs):
         """
         Updates the tower's position to the tile's center
