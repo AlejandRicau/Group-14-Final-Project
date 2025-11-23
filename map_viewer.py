@@ -50,6 +50,9 @@ class MapViewer(arcade.Window):
         # Update all enemies
         self.enemy_list.update()
 
+        # Update tower detection
+
+
         # Smooth camera movement
         dx = dy = 0
         if arcade.key.LEFT in self.keys_held:
@@ -276,6 +279,45 @@ class MapViewer(arcade.Window):
             if t.get_state() == 'path':  # must be adjacent to path
                 valid = True
         return valid
+
+    def update_tower_detection(self):
+        """
+        Updates the tower's target enemy.
+        """
+
+        # iterate through each tower
+        for tower in self.tower_list:
+
+            # check if any enemy is in range
+            enemies_in_range = arcade.check_for_collision_with_list(
+                tower.range_display,  # the range sprite
+                self.enemy_list  # the SpriteList of enemies
+            )
+
+            # if no enemy is in range, reset the tower's target
+            if not enemies_in_range:
+                tower.on_target = None
+                tower.range_display.color = arcade.color.GRAY
+                continue
+
+            # if there are multiple enemies in range, find the closest one
+            dist = float('inf')
+            closest = None
+            for enemy in enemies_in_range:
+
+                # calculate distance
+                curr_dist = distance_measure(
+                        tower.center_x, tower.center_y,
+                        enemy.center_x, enemy.center_y
+                    )
+
+                # if this is the first enemy or this enemy is closer, update closest
+                if (not closest) or (curr_dist < dist):
+                    closest = enemy
+                    dist = curr_dist
+
+            tower.on_target = closest
+            tower.range_display.color = arcade.color.GRAY
 
 
 
