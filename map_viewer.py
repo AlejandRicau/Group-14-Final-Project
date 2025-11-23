@@ -63,28 +63,20 @@ class MapViewer(arcade.Window):
             self.camera.position = (x + dx, y + dy)
 
     def on_mouse_press(self, x: int, y: int, button: int, modifiers: int):
-        # --- FIX: Use bottom_left position for camera ---
-        # We need the bottom-left corner to convert mouse pixels to world pixels.
-        camera_x = self.camera.bottom_left.x
-        camera_y = self.camera.bottom_left.y
+        """Functional response of mouse press"""
 
-        world_x = x + camera_x
-        world_y = y + camera_y
+        # convert mouse pos to world pos
+        world_point = self.camera.unproject((x, y))
+        world_x, world_y, _ = world_point  # `unproject` returns a Vec3
 
-        # Convert world pixels to grid coordinates
-        tx, ty = pixel_to_tile(world_x, world_y, self.tile_size)
+        # get the tile on the position
+        clicked_tile = arcade.get_sprites_at_point((world_x, world_y), self.background_list)[0]
 
-        # Bounds check
-        if not (0 <= tx < self.map.width and 0 <= ty < self.map.height):
-            return
-
-        clicked_tile = self.map.map[ty][tx]
-
-        # Debug print to verify coordinates
-        # print(f"Click: ({x}, {y}) -> World: ({world_x}, {world_y}) -> Tile: ({tx}, {ty}) -> State: {clicked_tile.get_state()}")
-
+        # mouse left click
         if button == arcade.MOUSE_BUTTON_LEFT:
+            # Debug print to verify coordinates
             print(f"clicked tile: {clicked_tile}")
+
             # Logic 1: Add Tower (If T is held)
             if arcade.key.T in self.keys_held:
                 self.add_tower(world_x, world_y)
@@ -97,6 +89,7 @@ class MapViewer(arcade.Window):
         """
         Creates an enemy at the start_tile, calculates a path to a weighted random goal.
         """
+
         # 1. Select a goal
         target_goal = self.get_weighted_goal(start_tile)
         if not target_goal:
