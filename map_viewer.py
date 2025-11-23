@@ -22,6 +22,7 @@ class MapViewer(arcade.Window):
         self.background_list = arcade.SpriteList()
         self.tower_list = arcade.SpriteList()
         self.enemy_list = arcade.SpriteList()
+        self.range_display_list = arcade.SpriteList()
 
         # 1. blocking_sprites: Holds the actual tile sprites that block movement
         self.blocking_sprites = arcade.SpriteList(use_spatial_hash=True)
@@ -42,6 +43,8 @@ class MapViewer(arcade.Window):
         self.background_list.draw()
         self.tower_list.draw()
         self.enemy_list.draw()
+        self.range_display_list.draw()
+        print(list(self.range_display_list))
 
     def on_update(self, delta_time: float):
         # Update all enemies
@@ -93,7 +96,8 @@ class MapViewer(arcade.Window):
             self.map.generate_new_map()
             self.rebuild_background_list()
             self.tower_list.clear()
-            self.enemy_list.clear()  # Clear enemies on new map
+            self.enemy_list.clear()
+            self.range_display_list.clear()
 
         elif symbol == arcade.key.P:
             self.map.recursive_path_generation(
@@ -203,6 +207,7 @@ class MapViewer(arcade.Window):
         """
         self.background_list.clear()
         self.tower_list.clear()
+        self.range_display_list.clear()
 
         # --- FIX 1: Re-create the list entirely to clear stale Spatial Hash data ---
         self.blocking_sprites = arcade.SpriteList(use_spatial_hash=True)
@@ -214,6 +219,7 @@ class MapViewer(arcade.Window):
                 if tile.tower:
                     tile.tower.update()
                     self.tower_list.append(tile.tower)
+                    self.range_display_list.append(tile.tower.range_display)
 
                 # If a tile is NOT walkable, it is a barrier.
                 # We EXPLICITLY check the state to be sure.
@@ -248,6 +254,7 @@ class MapViewer(arcade.Window):
 
         # add tower to the tower list
         self.tower_list.append(tower)
+        self.range_display_list.append(tower.range_display)
 
 
     def is_valid_tower_location(self, tile):

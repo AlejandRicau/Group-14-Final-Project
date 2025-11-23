@@ -8,13 +8,43 @@ class Tower(arcade.Sprite):
         super().__init__()
         self.tile = tile
         self.level = 1
-        self.range = range_r
+
+        self.range_radius = range_r
+        self.range_display = None
+        self.create_range_display()
+
         self.frequency = freq
         self.on_target = None
 
         # Set the tower's position to the tile's center
         self.center_x = tile.center_x
         self.center_y = tile.center_y
+
+    def create_range_display(self):
+        """
+        Creates a circle sprite to display the tower's range
+        """
+        # Create a circle sprite
+        self.range_display = arcade.SpriteCircle(self.range_radius, arcade.color.GRAY)
+
+        # Set the range display's position to the tower's position
+        self.range_display.center_x = self.tile.center_x
+        self.range_display.center_y = self.tile.center_y
+
+        # Make it semi-transparent
+        self.range_display.alpha = 100  # 0 = fully invisible, 255 = fully opaque
+
+    def update(self, *args, **kwargs):
+        """
+        Updates the tower's position to the tile's center
+        """
+        # Keep tower centered on its tile
+        self.center_x = self.tile.center_x
+        self.center_y = self.tile.center_y
+
+        # Update range display
+        self.range_display.center_x = self.tile.center_x
+        self.range_display.center_y = self.tile.center_y
 
     def upgrade(self):
         self.level += 1
@@ -63,13 +93,9 @@ class Tower(arcade.Sprite):
                 closest_enemy = enemy
         return closest_enemy
 
-    def update(self, *args, **kwargs):
-        # Keep tower centered on its tile
-        self.center_x = self.tile.center_x
-        self.center_y = self.tile.center_y
 
 
 class BaseTower(Tower):
     def __init__(self, tile):
-        super().__init__(tile, range_r=1, freq=1)
+        super().__init__(tile, range_r=100, freq=1)
         self.texture = TOWER_TEXTURES['base']
