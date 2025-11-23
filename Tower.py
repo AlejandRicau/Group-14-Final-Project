@@ -7,11 +7,14 @@ class Tower(arcade.Sprite):
     def __init__(self, tile, range_r, freq):
         super().__init__()
         self.tile = tile
-        self.center_x, self.center_y = tile_to_pixel_center(tile.x, tile.y, TILE_SIZE)
         self.level = 1
         self.range = range_r
         self.frequency = freq
         self.on_target = None
+
+        # Set the tower's position to the tile's center
+        self.center_x = tile.center_x
+        self.center_y = tile.center_y
 
     def upgrade(self):
         self.level += 1
@@ -27,7 +30,12 @@ class Tower(arcade.Sprite):
             bool: True if any enemy is in range, False otherwise
         """
         for enemy in enemy_list:
-            if distance_measure(self.center_px[0], self.center_px[1], enemy.position[0], enemy.position[1]) <= self.range:
+            if distance_measure(
+                    self.center_x,
+                    self.center_x,
+                    enemy.position[0],
+                    enemy.position[1]
+            ) <= self.range:
                 return True
         return False
 
@@ -54,6 +62,12 @@ class Tower(arcade.Sprite):
                 closest_distance = distance
                 closest_enemy = enemy
         return closest_enemy
+
+    def update(self, *args, **kwargs):
+        # Keep tower centered on its tile
+        self.center_x = self.tile.center_x
+        self.center_y = self.tile.center_y
+
 
 class BaseTower(Tower):
     def __init__(self, tile):
