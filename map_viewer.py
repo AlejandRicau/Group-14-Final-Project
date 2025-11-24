@@ -36,12 +36,15 @@ class MapViewer(arcade.Window):
         self.camera.use()
         self.background_list.draw()
         self.tower_list.draw()
-        self.range_display_list.draw()
         self.enemy_list.draw()
+        self.range_display_list.draw()
 
     def on_update(self, delta_time: float):
         # Update all enemies
         self.enemy_list.update()
+
+        # Update all towers
+        self.tower_list.update()
 
         # Update tower detection
         self.update_tower_detection()
@@ -212,6 +215,7 @@ class MapViewer(arcade.Window):
         # add tower to the tower list
         self.tower_list.append(tower)
         self.range_display_list.append(tower.range_display)
+        self.range_display_list.append(tower.target_dot)
 
     def is_valid_tower_location(self, tile):
         """
@@ -250,10 +254,8 @@ class MapViewer(arcade.Window):
 
             if closest:     # if an enemy is found
                 tower.on_target = closest
-                tower.update_display_texture('active')  # update tower display to active (red)
             else:           # if no enemy is found
                 tower.on_target = None
-                tower.update_display_texture('idle')    # update tower display to idle (gray)
 
 
 def main():
