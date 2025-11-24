@@ -13,6 +13,7 @@ class Tile(arcade.Sprite):
 
         self._state = state  # Only track the state
         self.tower = None
+        self.bitmask = 0
 
         self.update_texture()
 
@@ -48,7 +49,19 @@ class Tile(arcade.Sprite):
         return dx + dy + 1  # include start and goal tiles
 
     def update_texture(self):
-        self.texture = TILE_TEXTURES[self._state]
+        # 1. If it's a tunnel/path, use the bitmask texture
+        if self._state == 'path':
+            # Default to 0 (all walls) if mask isn't set yet
+            self.texture = TUNNEL_TEXTURES.get(self.bitmask, TUNNEL_TEXTURES[0])
+            self.scale = 1.0  # Since we generated at TILE_SIZE, scale is 1
+
+        # 2. For Spawn/Goal, you might want to overlay the color ON TOP of the tunnel
+        # For now, let's just keep them simple to verify the code works
+        elif self._state in TILE_TEXTURES:
+            self.texture = TILE_TEXTURES[self._state]
+            if self.texture:
+                # Recalculate scale for the standard textures
+                self.scale = TILE_SIZE / max(self.texture.width, self.texture.height)
 
     def link_tower(self, tower):
         self.tower = tower
@@ -58,3 +71,7 @@ class Tile(arcade.Sprite):
         self.x = grid_x
         self.y = grid_y
         self.matrix_to_pixel_position()
+
+    def set_bitmask(self, mask):
+        self.bitmask = mask
+        self.update_texture()

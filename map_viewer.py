@@ -24,12 +24,6 @@ class MapViewer(arcade.Window):
         self.enemy_list = arcade.SpriteList()
         self.range_display_list = arcade.SpriteList()
 
-        # 1. blocking_sprites: Holds the actual tile sprites that block movement
-        self.blocking_sprites = arcade.SpriteList(use_spatial_hash=True)
-
-        # 2. astar_barrier_list: The helper object Arcade needs for pathfinding
-        self.astar_barrier_list = None
-
         # Initial build
         self.rebuild_background_list()
 
@@ -43,7 +37,6 @@ class MapViewer(arcade.Window):
         self.background_list.draw()
         self.tower_list.draw()
         self.enemy_list.draw()
-        self.blocking_sprites.draw_hit_boxes(color=arcade.color.PURPLE, line_thickness=2)
         self.range_display_list.draw()
 
     def on_update(self, delta_time: float):
@@ -110,20 +103,24 @@ class MapViewer(arcade.Window):
                 self.map.spawns[0],
                 self.map.goals[0]
             )
+            self.map.calculate_autotiling()
             self.rebuild_background_list()
             self.enemy_list.clear()  # Paths changed, enemies invalid
 
         elif symbol == arcade.key.E:
             self.map.expand_map(add_width=6, add_height=6, add_new_spawns_goals=False)
+            self.map.calculate_autotiling()
             self.rebuild_background_list()
             self.enemy_list.clear()
 
         elif symbol == arcade.key.F:
             self.map.generate_new_special_point("spawn")
+            self.map.calculate_autotiling()
             self.rebuild_background_list()
 
         elif symbol == arcade.key.G:
             self.map.generate_new_special_point("goal")
+            self.map.calculate_autotiling()
             self.rebuild_background_list()
 
         elif symbol == arcade.key.ESCAPE:
@@ -136,33 +133,31 @@ class MapViewer(arcade.Window):
 
     def spawn_enemy_at_tile(self, start_tile):
         """
-        Creates an enemy at the start_tile, calculates a path to a weighted random goal.
+        Creates an enemy at the start_tile using internal BFS pathfinding.
         """
-
         # 1. Select a goal
         target_goal = self.get_weighted_goal(start_tile)
         if not target_goal:
             print("No reachable goals!")
             return
 
-        # 2. Calculate Path using Arcade's A*
-        path_pixels = arcade.astar_calculate_path(
-            start_tile.position,
-            target_goal.position,
-            self.astar_barrier_list,
-            diagonal_movement=False
-        )
+        # 2. Calculate Path using OUR OWN BFS (No Physics/Hitboxes involved)
+        # This returns a list of Tile objects
+        path_tiles = self.map.get_path_bfs(start_tile, target_goal)
 
-        if not path_pixels:
-            print(f"Error: A* failed. (Start: {start_tile}, End: {target_goal})")
+        if not path_tiles:
+            print(f"Error: No path found between {start_tile.grid_pos} and {target_goal.grid_pos}")
             return
 
-        # 3. Create Enemy
-        # FIX: Removed tile_size argument
+        # 3. Convert Tile objects to Pixel Coordinates for the Enemy class
+        # The Enemy needs [(x,y), (x,y)...] to move.
+        path_pixels = [(t.center_x, t.center_y) for t in path_tiles]
+
+        # 4. Create Enemy
         enemy = Enemy(path=path_pixels, speed=60)
 
         self.enemy_list.append(enemy)
-        print(f"Spawned enemy. Path length: {len(path_pixels)} steps.")
+        print(f"Spawned enemy. Steps: {len(path_pixels)}")
 
     def get_weighted_goal(self, start_tile):
         """
@@ -176,32 +171,22 @@ class MapViewer(arcade.Window):
         weights = []
 
         for goal in goals:
-            # Calculate Euclidean distance
-            dist = math.sqrt((goal.x - start_tile.x) ** 2 + (goal.y - start_tile.y) ** 2)
-
-            # Inverse distance weight: Closer = Higher weight
-            # Add a small epsilon (0.1) to prevent division by zero if dist is 0
-            weight = 1 / (dist + 0.1)
-
-            # Raise to power to make preference for closer goals stronger (weight squared)
-            weights.append(weight ** 2)
+            # Calculate distance
+            dist = len(self.map.get_path_bfs(start_tile, goal))**1.5
+            weights.append(dist)
 
         # Select one goal based on weights
+        weights = [1 / w for w in weights]
         selected_goal = random.choices(goals, weights=weights, k=1)[0]
         return selected_goal
 
     def rebuild_background_list(self):
         """
-        Rebuilds the sprite list for rendering AND the AStarBarrierList for pathfinding.
+        Rebuilds the sprite list for rendering
         """
         self.background_list.clear()
         self.tower_list.clear()
         self.range_display_list.clear()
-
-        # --- FIX 1: Disable Spatial Hash for safety ---
-        # Sometimes the hash doesn't update immediately for static tiles,
-        # causing them to be "invisible" to the pathfinder.
-        self.blocking_sprites = arcade.SpriteList(use_spatial_hash=True)
 
         for row in self.map.map:
             for tile in row:
@@ -212,23 +197,6 @@ class MapViewer(arcade.Window):
                     self.tower_list.append(tile.tower)
                     self.range_display_list.append(tile.tower.range_display)
 
-                # If a tile is NOT walkable, it is a barrier.
-                if tile.get_state() not in ['path', 'spawn', 'goal']:
-                    self.blocking_sprites.append(tile)
-
-
-        # Create a tiny dummy enemy for path calculation (1x1 pixel)
-        dummy_enemy = arcade.SpriteSolidColor(width=int(0.9*TILE_SIZE), height=int(0.9*TILE_SIZE), color=arcade.color.WHITE)
-
-        self.astar_barrier_list = arcade.AStarBarrierList(
-            moving_sprite=dummy_enemy,
-            blocking_sprites=self.blocking_sprites,
-            grid_size=self.tile_size,
-            left=0,
-            right=self.map.width * self.tile_size,
-            bottom=0,
-            top=self.map.height * self.tile_size
-        )
 
     def add_tower(self, tile):
         """

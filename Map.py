@@ -689,6 +689,86 @@ class Map:
 
         if end_tile.get_state() == 'path': end_tile.set_state('path')
 
+    def get_path_bfs(self, start_tile, end_tile):
+        """
+        Finds a path from start_tile to end_tile using Breadth-First Search.
+        It strictly follows tiles marked as 'path', 'spawn', or 'goal'.
+
+        Returns:
+            list[Tile]: A list of Tile objects representing the path.
+        """
+        # Queue stores tuples of (current_tile, current_path_list)
+        queue = [(start_tile, [start_tile])]
+        visited = {start_tile}
+
+        while queue:
+            current_tile, path = queue.pop(0)
+
+            # Found the destination? Return the path.
+            if current_tile == end_tile:
+                return path
+
+            # Check all 4 orthogonal neighbors
+            for direction in ["up", "right", "down", "left"]:
+                neighbor = self.get_neighboring_tile(current_tile, direction)
+
+                # 1. Check bounds and if visited
+                if not neighbor or neighbor in visited:
+                    continue
+
+                # 2. Check if walkable
+                # We can only walk on Path, Spawn, or Goal tiles.
+                # We CANNOT walk on Empty or Border tiles.
+                valid_states = ['path', 'spawn', 'goal']
+                if neighbor.get_state() in valid_states:
+                    visited.add(neighbor)
+                    new_path = list(path)
+                    new_path.append(neighbor)
+                    queue.append((neighbor, new_path))
+
+        print("BFS Failed: No connected path of 'path' tiles found between start and end.")
+        return None
+
+    def calculate_autotiling(self):
+        """
+        Iterates over the map and assigns a specific texture variation
+        to path tiles based on their neighbors.
+        """
+        for y in range(self.height):
+            for x in range(self.width):
+                tile = self.map[y][x]
+
+                # We only care about making 'path' tiles look like tunnels
+                # Note: You might also want to include 'spawn' and 'goal' in this look
+                if tile.get_state() not in ['path', 'spawn', 'goal']:
+                    continue
+
+                # Calculate the Bitmask
+                # North=1, East=2, South=4, West=8
+                mask = 0
+
+                # Check North
+                n = self.get_neighboring_tile(tile, "up")
+                if n and n.get_state() in ['path', 'spawn', 'goal']:
+                    mask += 1
+
+                # Check East
+                e = self.get_neighboring_tile(tile, "right")
+                if e and e.get_state() in ['path', 'spawn', 'goal']:
+                    mask += 2
+
+                # Check South
+                s = self.get_neighboring_tile(tile, "down")
+                if s and s.get_state() in ['path', 'spawn', 'goal']:
+                    mask += 4
+
+                # Check West
+                w = self.get_neighboring_tile(tile, "left")
+                if w and w.get_state() in ['path', 'spawn', 'goal']:
+                    mask += 8
+
+                # Save this mask to the tile so it knows which image to load
+                tile.set_bitmask(mask)
 
 
 
