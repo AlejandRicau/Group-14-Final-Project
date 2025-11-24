@@ -22,17 +22,22 @@ class Tower(arcade.Sprite):
 
     def create_range_display(self):
         """
-        Creates a circle sprite to display the tower's range
+        Creates a circular range display as a Sprite with a proper hitbox
         """
-        # Create a circle sprite
-        self.range_display = arcade.SpriteCircle(self.range_radius, arcade.color.GRAY)
+        # Create a circle texture
+        diameter = self.range_radius * 2
+        circle_tex = arcade.make_circle_texture(diameter, arcade.color.GRAY)
 
-        # Set the range display's position to the tower's position
+        # Create a Sprite with that texture
+        self.range_display = arcade.Sprite()
+        self.range_display.texture = circle_tex
+
+        # Set position
         self.range_display.center_x = self.tile.center_x
         self.range_display.center_y = self.tile.center_y
 
         # Make it semi-transparent
-        self.range_display.alpha = 100  # 0 = fully invisible, 255 = fully opaque
+        self.range_display.alpha = 100
 
     def toggle_range_display(self):
         """Hide or show the range display"""
@@ -50,52 +55,23 @@ class Tower(arcade.Sprite):
         self.range_display.center_x = self.tile.center_x
         self.range_display.center_y = self.tile.center_y
 
+    def update_display_texture(self, state):
+        diameter = self.range_radius * 2
+        if state == 'idle':
+            color = arcade.color.GRAY
+        elif state == 'active':
+            color = arcade.color.RED
+        else:
+            print(f"Invalid state: {state}")
+            return
+
+        # Replace the texture dynamically
+        new_tex = arcade.make_circle_texture(diameter, color)
+        self.range_display.texture = new_tex
+        self.range_display.alpha = 100
+
     def upgrade(self):
         self.level += 1
-
-    def is_enemy_in_range(self, enemy_list):
-        """
-        Checks if any enemy is in range of the tower
-
-        Args:
-            enemy_list (list<Enemy>): List of enemy objects
-
-        Returns:
-            bool: True if any enemy is in range, False otherwise
-        """
-        for enemy in enemy_list:
-            if distance_measure(
-                    self.center_x,
-                    self.center_x,
-                    enemy.position[0],
-                    enemy.position[1]
-            ) <= self.range:
-                return True
-        return False
-
-    def find_target(self, enemy_list):
-        """
-        Finds the closest enemy to the tower
-
-        Args:
-            enemy_list (list<Enemy>): List of enemy objects
-
-        Returns:
-            Enemy: The closest enemy to the tower
-        """
-        # if no enemy is in range, return None
-        closest_enemy = None
-        if not self.is_enemy_in_range():
-            return closest_enemy
-
-        # find the closest enemy
-        closest_distance = float('inf')
-        for enemy in enemy_list:
-            distance = distance_measure(self.center_px[0], self.center_px[1], enemy.position[0], enemy.position[1])
-            if distance < closest_distance:
-                closest_distance = distance
-                closest_enemy = enemy
-        return closest_enemy
 
 
 

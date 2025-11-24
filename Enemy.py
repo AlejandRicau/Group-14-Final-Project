@@ -31,7 +31,7 @@ class Enemy(arcade.Sprite):
         if self.health <= 0:
             self.kill()
 
-    def update(self, delta_time: float = 1 / 60):
+    def update(self, delta_time: float = 1 / 60, *args):
         if not self.path or self.current_point_index >= len(self.path):
             return
 

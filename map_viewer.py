@@ -36,15 +36,15 @@ class MapViewer(arcade.Window):
         self.camera.use()
         self.background_list.draw()
         self.tower_list.draw()
-        self.enemy_list.draw()
         self.range_display_list.draw()
+        self.enemy_list.draw()
 
     def on_update(self, delta_time: float):
         # Update all enemies
         self.enemy_list.update()
 
         # Update tower detection
-
+        self.update_tower_detection()
 
         # Smooth camera movement
         dx = dy = 0
@@ -75,7 +75,6 @@ class MapViewer(arcade.Window):
         if button == arcade.MOUSE_BUTTON_LEFT:
             # Debug print to verify coordinates
             print(f"clicked tile: {clicked_tile}", end = "  ")
-            print(f"Tower: {bool(clicked_tile.tower)}")
 
             # Logic 1: Add Tower (If T is held)
             if arcade.key.T in self.keys_held:
@@ -214,7 +213,6 @@ class MapViewer(arcade.Window):
         self.tower_list.append(tower)
         self.range_display_list.append(tower.range_display)
 
-
     def is_valid_tower_location(self, tile):
         """
         Returns True if the tile is a valid location for a tower.
@@ -233,43 +231,29 @@ class MapViewer(arcade.Window):
 
     def update_tower_detection(self):
         """
-        Updates the tower's target enemy.
+        Updates each tower's target enemy using Euclidean distance efficiently.
         """
-
         # iterate through each tower
         for tower in self.tower_list:
+            closest = None      # closest enemy
+            min_dist_sq = tower.range_radius ** 2  # only consider enemies within range
 
-            # check if any enemy is in range
-            enemies_in_range = arcade.check_for_collision_with_list(
-                tower.range_display,  # the range sprite
-                self.enemy_list  # the SpriteList of enemies
-            )
+            for enemy in self.enemy_list:   # iterate through each enemy
+                dx = tower.center_x - enemy.center_x
+                dy = tower.center_y - enemy.center_y
+                dist_sq = dx * dx + dy * dy     # calculate squared distance
 
-            # if no enemy is in range, reset the tower's target
-            if not enemies_in_range:
-                tower.on_target = None
-                tower.range_display.color = arcade.color.GRAY
-                continue
-
-            # if there are multiple enemies in range, find the closest one
-            dist = float('inf')
-            closest = None
-            for enemy in enemies_in_range:
-
-                # calculate distance
-                curr_dist = distance_measure(
-                        tower.center_x, tower.center_y,
-                        enemy.center_x, enemy.center_y
-                    )
-
-                # if this is the first enemy or this enemy is closer, update closest
-                if (not closest) or (curr_dist < dist):
+                if dist_sq <= tower.range_radius ** 2 and (closest is None or dist_sq < min_dist_sq):
+                    # update the closest enemy if it's within range and closer
                     closest = enemy
-                    dist = curr_dist
+                    min_dist_sq = dist_sq
 
-            tower.on_target = closest
-            tower.range_display.color = arcade.color.GRAY
-
+            if closest:     # if an enemy is found
+                tower.on_target = closest
+                tower.update_display_texture('active')  # update tower display to active (red)
+            else:           # if no enemy is found
+                tower.on_target = None
+                tower.update_display_texture('idle')    # update tower display to idle (gray)
 
 
 def main():
