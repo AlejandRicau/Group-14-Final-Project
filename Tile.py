@@ -8,6 +8,7 @@ class Tile(arcade.Sprite):
         super().__init__()
         self.x = x
         self.y = y
+        self.grid_pos = self.x, self.y
         self.matrix_to_pixel_position()
 
         self._state = state  # Only track the state
