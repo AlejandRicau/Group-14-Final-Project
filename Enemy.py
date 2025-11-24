@@ -11,7 +11,7 @@ class Enemy(arcade.Sprite):
         # 2. Calculate Scale using the GLOBAL constant
         # We make it slightly smaller (80%) to fit comfortably in the tile
         desired_size = TILE_SIZE * 0.8
-        scale = desired_size / max(texture.width,texture.height)
+        scale = desired_size // max(texture.width,texture.height)
 
         # Pass texture as the first POSITIONAL argument
         super().__init__(texture, scale=scale)

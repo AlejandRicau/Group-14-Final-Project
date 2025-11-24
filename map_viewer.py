@@ -142,23 +142,6 @@ class MapViewer(arcade.Window):
             print("No reachable goals!")
             return
 
-        # --- FIX 2: Debug Collision Checks ---
-        # Create a temp sprite to test collisions at Start and End
-        # This tells us immediately if the map logic is blocking our spawns
-        tester = arcade.SpriteSolidColor(width=1, height=1, color=arcade.color.WHITE)
-
-        # Check Start
-        tester.position = start_tile.position
-        if arcade.check_for_collision_with_list(tester, self.blocking_sprites):
-            print(f"ERROR: Spawn {start_tile.grid_pos} is inside a barrier!")
-            return
-
-        # Check Goal
-        tester.position = target_goal.position
-        if arcade.check_for_collision_with_list(tester, self.blocking_sprites):
-            print(f"ERROR: Goal {target_goal.grid_pos} is inside a barrier!")
-            return
-
         # 2. Calculate Path using Arcade's A*
         path_pixels = arcade.astar_calculate_path(
             start_tile.position,
@@ -168,7 +151,7 @@ class MapViewer(arcade.Window):
         )
 
         if not path_pixels:
-            print(f"Error: A* failed. (Start: {start_tile.grid_pos}, End: {target_goal.grid_pos})")
+            print(f"Error: A* failed. (Start: {start_tile}, End: {target_goal})")
             return
 
         # 3. Create Enemy
