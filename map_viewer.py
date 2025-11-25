@@ -32,7 +32,7 @@ class MapViewer(arcade.Window):
 
         self.setup_ui()  # Helper function to build the layout
 
-        # --- Sprite Lists ---
+        # Sprite Lists
         self.camera = arcade.camera.Camera2D()
         self.background_list = arcade.SpriteList()
         self.tower_list = arcade.SpriteList()
@@ -42,7 +42,7 @@ class MapViewer(arcade.Window):
         # Initialize Managers
         self.game_manager = GameManager()
 
-        # --- NEW: GUI Camera ---
+        # GUI Camera
         # We use a second camera for the UI so it stays static
         # while the map camera moves around.
         self.gui_camera = arcade.camera.Camera2D()
@@ -127,7 +127,8 @@ class MapViewer(arcade.Window):
         self.tower_list.update()
 
         # Update tower detection
-        self.update_tower_detection()
+        for tower in self.tower_list:
+            tower.acquire_target(self.enemy_list)
 
         # Update UI Values
         self.update_ui_values()
@@ -170,7 +171,7 @@ class MapViewer(arcade.Window):
 
                     # --- NEW: Check Affordability ---
                     if self.game_manager.can_afford(TOWER_COST):
-                        if self.is_valid_tower_location(clicked_tile):
+                        if clicked_tile.is_valid_tower_location(self.map):
                             self.add_tower(clicked_tile)
                             self.game_manager.spend_money(TOWER_COST)
                             print(f"Tower placed! Remaining Money: {self.game_manager.money}")
@@ -300,6 +301,7 @@ class MapViewer(arcade.Window):
                     tile.tower.update()
                     self.tower_list.append(tile.tower)
                     self.range_display_list.append(tile.tower.range_display)
+                    self.range_display_list.append(tile.tower.target_dot)
 
 
     def add_tower(self, tile):
@@ -307,7 +309,7 @@ class MapViewer(arcade.Window):
         Adds a tower to the map at the tile hovered by the mouse.
         """
         # check validity
-        if not self.is_valid_tower_location(tile):
+        if not tile.is_valid_tower_location(self.map):
             return
 
         # add tower and link it to the tile
@@ -319,28 +321,6 @@ class MapViewer(arcade.Window):
         self.range_display_list.append(tower.range_display)
         self.range_display_list.append(tower.target_dot)
 
-    def is_valid_tower_location(self, tile):
-        """
-        Returns True if the tile is a valid location for a tower.
-        """
-        valid = False
-
-        # check if the tile is next to a path
-        surrounding_tiles = self.map.get_surrounding_tiles(tile)
-        for idx, t in enumerate(surrounding_tiles):
-            if idx == len(surrounding_tiles) // 2:  # the tile hovered
-                if t.get_state() != 'empty':  # the tile hovered must be empty
-                    return False
-            if t.get_state() == 'path':  # must be adjacent to path
-                valid = True
-        return valid
-
-    def update_tower_detection(self):
-        """
-        Iterates through each tower and acquires the closest enemy
-        """
-        for tower in self.tower_list:
-            tower.acquire_target(self.enemy_list)
 
 
 def main():

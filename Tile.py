@@ -1,6 +1,5 @@
 from helper_functions import *
 from constants import *
-from pyglet.math import Vec2
 import arcade
 
 class Tile(arcade.Sprite):
@@ -75,3 +74,38 @@ class Tile(arcade.Sprite):
     def set_bitmask(self, mask):
         self.bitmask = mask
         self.update_texture()
+
+    def get_bitmask(self):
+        return self.bitmask
+
+    def is_adjacent_to_path(self, tilemap):
+        """
+        Check if the tile is adjacent to a path tile.
+
+        Args:
+            tilemap (Map): The tilemap to check against.
+
+        Returns:
+            bool: True if the tile is adjacent to a path tile, False otherwise.
+        """
+        for t in tilemap.get_surrounding_tiles(self):
+            if t.get_state() == 'path':
+                return True
+        return False
+
+    def is_valid_tower_location(self, tilemap):
+        """
+        Check if the tile is a valid location for a tower.
+
+        Args:
+            tilemap (Map): The tilemap to check against.
+
+        Returns:
+            bool: True if the tile is a valid location for a tower, False otherwise.
+        """
+        # tile must be empty
+        if self.get_state() != 'empty':
+            return False
+
+        # tile must touch a path
+        return self.is_adjacent_to_path(tilemap)
