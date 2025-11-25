@@ -4,7 +4,7 @@ import math
 
 
 class Enemy(arcade.Sprite):
-    def __init__(self, path, health=100, damage=10, speed=100, reward=10):
+    def __init__(self, path, game_manager, health=100, damage=10, speed=100, reward=10):
         # 1. Load Texture
         texture = arcade.load_texture(":resources:images/animated_characters/zombie/zombie_idle.png")
 
@@ -21,6 +21,7 @@ class Enemy(arcade.Sprite):
         self.damage = damage
         self.speed = speed
         self.reward = reward
+        self.game_manager = game_manager
 
         # Set initial position
         if self.path and len(self.path) > 0:
@@ -29,7 +30,15 @@ class Enemy(arcade.Sprite):
     def deal_damage(self, ext_damage):
         self.health -= ext_damage
         if self.health <= 0:
+            # Give Reward
+            self.game_manager.add_money(self.reward)
             self.kill()
+
+    def reach_goal(self):
+        print(f"Enemy reached goal! Dealt {self.damage} damage.")
+        # Penalize Player
+        self.game_manager.lose_life(1)
+        self.kill()
 
     def update(self, delta_time: float = 1 / 60, *args):
         if not self.path or self.current_point_index >= len(self.path):
@@ -62,7 +71,3 @@ class Enemy(arcade.Sprite):
             angle = math.atan2(y_diff, x_diff)
             self.center_x += math.cos(angle) * move_distance
             self.center_y += math.sin(angle) * move_distance
-
-    def reach_goal(self):
-        print(f"Enemy reached goal! Dealt {self.damage} damage.")
-        self.kill()

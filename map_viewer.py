@@ -5,8 +5,10 @@ from Tile import Tile
 from Enemy import Enemy
 from Tower import BaseTower
 import arcade
+import arcade.gui
 import random
 import math
+from GameManager import GameManager
 
 
 class MapViewer(arcade.Window):
@@ -16,28 +18,106 @@ class MapViewer(arcade.Window):
 
         self.tile_size = tile_size
         self.map = Map(width, height)
-        self.camera = arcade.camera.Camera2D()
+
+        # Game Managers
+        self.game_manager = GameManager()
+
+        # --- GUI SETUP ---
+        self.ui_manager = arcade.gui.UIManager()
+        self.ui_manager.enable()  # Vital: tells Arcade to listen for UI events
+
+        # Create the variables to hold our labels so we can update them later
+        self.money_label = None
+        self.lives_label = None
+
+        self.setup_ui()  # Helper function to build the layout
 
         # --- Sprite Lists ---
+        self.camera = arcade.camera.Camera2D()
         self.background_list = arcade.SpriteList()
         self.tower_list = arcade.SpriteList()
         self.enemy_list = arcade.SpriteList()
         self.range_display_list = arcade.SpriteList()
 
+        # Initialize Managers
+        self.game_manager = GameManager()
+
+        # --- NEW: GUI Camera ---
+        # We use a second camera for the UI so it stays static
+        # while the map camera moves around.
+        self.gui_camera = arcade.camera.Camera2D()
+
         # Initial build
+        if self.map.spawns and self.map.goals:
+            self.map.recursive_path_generation(self.map.spawns[0], self.map.goals[0])
+            self.map.calculate_autotiling()
+
         self.rebuild_background_list()
 
         # Camera control parameters
         self.camera_speed = 20
         self.keys_held = set()
 
+    def setup_ui(self):
+        """Creates the UI widgets and layout."""
+
+        # 1. Create a Layout (AnchorLayout is best for HUDs)
+        self.ui_layout = arcade.gui.UIAnchorLayout()
+
+        # 2. Create the Money Label
+        self.money_label = arcade.gui.UILabel(
+            text=f"Money: ${self.game_manager.money}",
+            font_size=24,
+            text_color=arcade.color.WHITE,
+            font_name="Kenney Future"  # Optional: looks game-y
+        )
+
+        # 3. Create the Lives Label
+        self.lives_label = arcade.gui.UILabel(
+            text=f"Lives: {self.game_manager.lives}",
+            font_size=24,
+            text_color=arcade.color.RED,
+            font_name="Kenney Future"
+        )
+
+        # 4. Create a container for the stats (Horizontal Box)
+        # This keeps them side-by-side neatly
+        stats_box = arcade.gui.UIBoxLayout(vertical=False, space_between=20)
+        stats_box.add(self.money_label)
+        stats_box.add(self.lives_label)
+
+        # 5. Add the box to the Anchor Layout (Bottom Left)
+        self.ui_layout.add(
+            child=stats_box,
+            anchor_x="left",
+            anchor_y="bottom",
+            align_x=20,  # Padding from left edge
+            align_y=20  # Padding from bottom edge
+        )
+
+        # 6. Add the layout to the manager
+        self.ui_manager.add(self.ui_layout)
+
+    def update_ui_values(self):
+        """Updates the text of the labels."""
+        # This is efficient because UILabel only re-renders if the string is different
+        self.money_label.text = f"Money: ${self.game_manager.money}"
+        self.lives_label.text = f"Lives: {self.game_manager.lives}"
+
     def on_draw(self):
         self.clear()
+
+        # 1. Draw World
         self.camera.use()
         self.background_list.draw()
         self.tower_list.draw()
         self.enemy_list.draw()
+        # self.blocking_sprites.draw_hit_boxes(...) # Optional debug
         self.range_display_list.draw()
+
+        # 2. Draw UI
+        # The UIManager handles the camera/viewport automatically!
+        self.ui_manager.draw()
 
     def on_update(self, delta_time: float):
         # Update all enemies
@@ -48,6 +128,9 @@ class MapViewer(arcade.Window):
 
         # Update tower detection
         self.update_tower_detection()
+
+        # Update UI Values
+        self.update_ui_values()
 
         # Update tower attacks
         for tower in self.tower_list:
@@ -80,13 +163,22 @@ class MapViewer(arcade.Window):
 
         # mouse left click
         if button == arcade.MOUSE_BUTTON_LEFT:
-            # Debug print to verify coordinates
-            print(f"clicked tile: {clicked_tile}", end = "  ")
 
             # Logic 1: Add Tower (If T is held)
             if arcade.key.T in self.keys_held:
                 if not clicked_tile.tower:
-                    self.add_tower(clicked_tile)
+
+                    # --- NEW: Check Affordability ---
+                    if self.game_manager.can_afford(TOWER_COST):
+                        if self.is_valid_tower_location(clicked_tile):
+                            self.add_tower(clicked_tile)
+                            self.game_manager.spend_money(TOWER_COST)
+                            print(f"Tower placed! Remaining Money: {self.game_manager.money}")
+                        else:
+                            print("Invalid Location!")
+                    else:
+                        print("Not enough money!")
+
                 else:
                     clicked_tile.tower.toggle_range_display()
 
@@ -161,7 +253,7 @@ class MapViewer(arcade.Window):
         path_pixels = [(t.center_x, t.center_y) for t in path_tiles]
 
         # 4. Create Enemy
-        enemy = Enemy(path=path_pixels, speed=60)
+        enemy = Enemy(path=path_pixels, game_manager=self.game_manager, speed=60)
 
         self.enemy_list.append(enemy)
         print(f"Spawned enemy. Steps: {len(path_pixels)}")

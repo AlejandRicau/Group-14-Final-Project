@@ -6,6 +6,14 @@ TILE_SIZE = 20
 SCREEN_WIDTH = 800
 SCREEN_HEIGHT = 600
 
+# --- Game Economy Constants ---
+STARTING_MONEY = 100
+STARTING_LIVES = 20
+
+TOWER_COST = 50
+ENEMY_REWARD = 15  # Money gained when killing an enemy
+ENEMY_PENALTY = 1  # Lives lost when enemy reaches base
+
 # Colors
 COLOR_EMPTY = arcade.color.STORMCLOUD         # Dark void for empty space
 COLOR_TUNNEL_FLOOR = arcade.color.GRAY    # Concrete floor for steam tunnels
