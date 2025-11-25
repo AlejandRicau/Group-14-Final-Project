@@ -240,27 +240,10 @@ class MapViewer(arcade.Window):
 
     def update_tower_detection(self):
         """
-        Updates each tower's target enemy using Euclidean distance efficiently.
+        Iterates through each tower and acquires the closest enemy
         """
-        # iterate through each tower
         for tower in self.tower_list:
-            closest = None      # closest enemy
-            min_dist_sq = tower.range_radius ** 2  # only consider enemies within range
-
-            for enemy in self.enemy_list:   # iterate through each enemy
-                dx = tower.center_x - enemy.center_x
-                dy = tower.center_y - enemy.center_y
-                dist_sq = dx * dx + dy * dy     # calculate squared distance
-
-                if dist_sq <= tower.range_radius ** 2 and (closest is None or dist_sq < min_dist_sq):
-                    # update the closest enemy if it's within range and closer
-                    closest = enemy
-                    min_dist_sq = dist_sq
-
-            if closest:     # if an enemy is found
-                tower.on_target = closest
-            else:           # if no enemy is found
-                tower.on_target = None
+            tower.acquire_target(self.enemy_list)
 
 
 def main():

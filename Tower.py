@@ -82,6 +82,30 @@ class Tower(arcade.Sprite):
         self.range_display.texture = new_tex
         self.range_display.alpha = 100
 
+    def acquire_target(self, enemy_list):
+        """
+        Acquires the closest enemy within range
+
+        Args:
+            enemy_list (list): List of all enemies from the game/window
+        """
+        # Initialize variables
+        closest = None
+        min_dist_sq = self.range_radius * self.range_radius
+
+        # Iterate through all enemies
+        for enemy in enemy_list:
+            dx = self.center_x - enemy.center_x
+            dy = self.center_y - enemy.center_y
+            dist_sq = dx*dx + dy*dy
+
+            # Update the closest enemy if within range and closer
+            if dist_sq <= min_dist_sq and (closest is None or dist_sq < min_dist_sq):
+                closest = enemy
+                min_dist_sq = dist_sq
+
+        self.on_target = closest
+
     def create_target_dot(self):
         """Creates a circular target aim as a Sprite"""
         self.target_dot = arcade.SpriteCircle(5, arcade.color.RED)
