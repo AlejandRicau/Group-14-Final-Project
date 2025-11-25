@@ -49,6 +49,10 @@ class MapViewer(arcade.Window):
         # Update tower detection
         self.update_tower_detection()
 
+        # Update tower attacks
+        for tower in self.tower_list:
+            tower.attack_update(delta_time)
+
         # Smooth camera movement
         dx = dy = 0
         if arcade.key.LEFT in self.keys_held:
@@ -107,6 +111,7 @@ class MapViewer(arcade.Window):
             )
             self.map.calculate_autotiling()
             self.rebuild_background_list()
+            self.tower_list.clear()
             self.enemy_list.clear()  # Paths changed, enemies invalid
 
         elif symbol == arcade.key.E:

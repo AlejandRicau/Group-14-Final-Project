@@ -16,8 +16,10 @@ class Tower(arcade.Sprite):
         self.target_dot = None
         self.create_target_dot()
 
-        self.frequency = freq
+        self.frequency = freq       #<-- How often the tower attacks [1/second]
         self.on_target: Enemy | None = None       #<-- Enemy currently being targeted
+        self.damage = 40
+        self.cooldown = 0.0
 
         # Set the tower's position to the tile's center
         self.center_x = tile.center_x
@@ -97,6 +99,23 @@ class Tower(arcade.Sprite):
             self.target_dot.center_x = self.center_x
             self.target_dot.center_y = self.center_y
             self.target_dot.visible = False
+
+    def attack_update(self, delta_time: float):
+        """
+        Updates the tower's attack logic
+        """
+        if self.on_target is None:
+            return
+
+        # Count down cooldown
+        self.cooldown -= delta_time
+
+        if self.cooldown <= 0:
+            # Fire!
+            self.on_target.deal_damage(self.damage)
+
+            # Reset cooldown
+            self.cooldown = 1.0 / self.frequency
 
     def upgrade(self):
         self.level += 1
