@@ -115,7 +115,7 @@ class MapViewer(arcade.Window):
             self.enemy_list.clear()  # Paths changed, enemies invalid
 
         elif symbol == arcade.key.E:
-            self.map.expand_map(add_width=6, add_height=6, add_new_spawns_goals=False)
+            self.map.expand_map(add_width=6, add_height=6)
             self.map.calculate_autotiling()
             self.rebuild_background_list()
             self.enemy_list.clear()
@@ -178,8 +178,13 @@ class MapViewer(arcade.Window):
         weights = []
 
         for goal in goals:
-            # Calculate distance
-            dist = len(self.map.get_path_bfs(start_tile, goal))**1.5
+            path = self.map.get_path_bfs(start_tile, goal)
+
+            # Safety check: If path is None (disconnected), skip this goal
+            if path is None:
+                continue
+
+            dist = len(path) ** 1.5
             weights.append(dist)
 
         # Select one goal based on weights

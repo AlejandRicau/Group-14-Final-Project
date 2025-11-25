@@ -7,7 +7,7 @@ SCREEN_WIDTH = 800
 SCREEN_HEIGHT = 600
 
 # Colors
-COLOR_EMPTY = arcade.color.DARK_GRAY         # Dark void for empty space
+COLOR_EMPTY = arcade.color.STORMCLOUD         # Dark void for empty space
 COLOR_TUNNEL_FLOOR = arcade.color.GRAY    # Concrete floor for steam tunnels
 COLOR_TUNNEL_WALL = arcade.color.DARK_SLATE_GRAY # Dark walls
 COLOR_SPAWN = arcade.color.BLUE
@@ -17,11 +17,11 @@ COLOR_TOWER = arcade.color.YELLOW
 
 # Map each state to an RGBA color
 TILE_COLORS = {
-    "empty": (*COLOR_EMPTY[:3], 255),
-    "spawn": (*COLOR_SPAWN[:3], 255),
-    "goal": (*COLOR_GOAL[:3], 255),
-    "border": (*COLOR_BORDER[:3], 255),
-    "tower": (*COLOR_TOWER[:3], 255),
+    "empty": COLOR_EMPTY,
+    "spawn": COLOR_SPAWN,
+    "goal": COLOR_GOAL,
+    "border": COLOR_BORDER,
+    "tower": COLOR_TOWER,
 }
 
 # Pre-generate textures for each state using PIL

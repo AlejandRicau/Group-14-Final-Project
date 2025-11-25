@@ -7,6 +7,9 @@ class Map:
         self.width = width
         self.height = height
         self.difficulty = difficulty
+        self.map = None
+        self.spawns = []
+        self.goals = []
         self.generate_new_map()
 
     def generate_new_map(self):
@@ -78,7 +81,7 @@ class Map:
 
         return self.map[spawn_y][spawn_x], self.map[goal_y][goal_x]
 
-    def expand_map(self, add_width=0, add_height=0, add_new_spawns_goals=False):
+    def expand_map(self, add_width=0, add_height=0):
         """
         Expands the current map outward by the given width and height increments.
         Keeps existing spawns, goals, and tiles in the center of the new map.
@@ -107,12 +110,11 @@ class Map:
                 old_y = y - y_offset
 
                 if 0 <= old_x < self.width and 0 <= old_y < self.height:
-                    # Copy old tile, update its coordinates
                     old_tile = self.map[old_y][old_x]
                     new_tile = old_tile
+                    # This updates the tile object's internal x,y to the NEW coordinates
                     new_tile.update_position(x, y)
                 else:
-                    # Create a new empty tile
                     new_tile = Tile(x, y)
 
                 new_map[y][x] = new_tile
@@ -129,21 +131,11 @@ class Map:
         self.height = new_height
 
         # --- Update spawn/goal coordinates ---
-        self.spawns = [self.map[tile.y + y_offset][tile.x + x_offset] for tile in self.spawns]
-        self.goals = [self.map[tile.y + y_offset][tile.x + x_offset] for tile in self.goals]
+        self.spawns = [self.map[t.y][t.x] for t in self.spawns]
+        self.goals = [self.map[t.y][t.x] for t in self.goals]
 
         # --- Rebuild the outer border ---
         self.make_border()
-
-        # --- Optionally add new spawns/goals ---
-        if add_new_spawns_goals:
-            spawn_tile, goal_tile = self.generate_opposite_side_positions(offset=SPAWN_GOAL_DISTANCE_FROM_EDGE)
-            spawn_tile.set_state('spawn')
-            spawn_tile.color = 2
-            goal_tile.set_state('goal')
-            goal_tile.color = 3
-            self.spawns.append(spawn_tile)
-            self.goals.append(goal_tile)
 
     def recursive_path_generation(self, start_tile, end_tile):
         """
