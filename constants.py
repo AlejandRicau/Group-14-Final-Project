@@ -2,11 +2,12 @@ import arcade
 from PIL import Image, ImageDraw
 import random
 
+# Game Constants
 TILE_SIZE = 20
 SCREEN_WIDTH = 800
 SCREEN_HEIGHT = 600
 
-# --- Game Economy Constants ---
+# Game Economy Constants
 STARTING_MONEY = 100
 STARTING_LIVES = 20
 
@@ -15,24 +16,22 @@ ENEMY_REWARD = 15  # Money gained when killing an enemy
 ENEMY_PENALTY = 1  # Lives lost when enemy reaches base
 
 # Colors
-COLOR_EMPTY = arcade.color.STORMCLOUD         # Dark void for empty space
-COLOR_TUNNEL_FLOOR = arcade.color.GRAY    # Concrete floor for steam tunnels
-COLOR_TUNNEL_WALL = arcade.color.DARK_SLATE_GRAY # Dark walls
+COLOR_EMPTY = arcade.color.STORMCLOUD               # Dark void for empty space
+COLOR_TUNNEL_FLOOR = arcade.color.GRAY              # Concrete floor for steam tunnels
+COLOR_TUNNEL_WALL = arcade.color.DARK_SLATE_GRAY    # Dark walls
 COLOR_SPAWN = arcade.color.BLUE
 COLOR_GOAL = arcade.color.RED
 COLOR_BORDER = arcade.color.DARK_BROWN
-COLOR_TOWER = arcade.color.YELLOW
 
-# Map each state to an RGBA color
+# Map each tile state to an RGBA color
 TILE_COLORS = {
     "empty": COLOR_EMPTY,
     "spawn": COLOR_SPAWN,
     "goal": COLOR_GOAL,
     "border": COLOR_BORDER,
-    "tower": COLOR_TOWER,
 }
 
-# Pre-generate textures for each state using PIL
+# Pre-generate textures for each tile state using PIL
 TILE_TEXTURES = {
     state: arcade.Texture(
         name=f"tile-{state}",
@@ -97,12 +96,35 @@ def generate_tunnel_textures():
 # Generate them once at import time
 TUNNEL_TEXTURES = generate_tunnel_textures()
 
+# Tower constants
+TOWER_SIZE = (TILE_SIZE-5, TILE_SIZE-5)
+RANGE_DISPLAY_OPACITY = 100     # out of 255
+
+# Base tower constants
+BASE_TOWER_DAMAGE = 40
+BASE_TOWER_FREQUENCY = 1
+BASE_TOWER_RANGE_RADIUS = 100
+
+# AOE tower constants
+AOE_DAMAGE = 200
+AOE_FREQUENCY = 1
+AOE_RANGE_RADIUS = 150
+AOE_DAMAGE_RADIUS = 15
+
 # Tower textures
 TOWER_TEXTURES = {
     "base": arcade.Texture(
         name="base",
-        image=Image.new("RGBA", (TILE_SIZE-5, TILE_SIZE-5), (*arcade.color.PURPLE[:3], 255))
-    )
+        image=Image.new(
+            "RGBA", TOWER_SIZE,
+            (*arcade.color.PURPLE[:3], 255))
+    ),
+    "AOE": arcade.Texture(
+        name="AOE",
+        image=Image.new(
+            "RGBA", TOWER_SIZE,
+            (*arcade.color.YELLOW[:3], 255))
+    ),
 }
 
 '''Spawn and Goal distance from the edge'''

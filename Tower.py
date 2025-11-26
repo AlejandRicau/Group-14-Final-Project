@@ -4,7 +4,7 @@ from Enemy import Enemy
 import arcade
 
 class Tower(arcade.Sprite):
-    def __init__(self, tile, range_r, freq):
+    def __init__(self, tile, range_r, freq, damage):
         super().__init__()
         self.tile = tile
         self.level = 1
@@ -18,7 +18,7 @@ class Tower(arcade.Sprite):
 
         self.frequency = freq       #<-- How often the tower attacks [1/second]
         self.on_target: Enemy | None = None       #<-- Enemy currently being targeted
-        self.damage = 40
+        self.damage = damage
         self.cooldown = 0.0
 
         # Set the tower's position to the tile's center
@@ -62,7 +62,7 @@ class Tower(arcade.Sprite):
         self.range_display.center_y = self.tile.center_y
 
         # Make it semi-transparent
-        self.range_display.alpha = 100      #<-- [0, 255]
+        self.range_display.alpha = RANGE_DISPLAY_OPACITY
 
     def toggle_range_display(self):
         """Hide or show the range display"""
@@ -80,7 +80,7 @@ class Tower(arcade.Sprite):
         diameter = self.range_radius * 2
         new_tex = arcade.make_circle_texture(diameter, color)
         self.range_display.texture = new_tex
-        self.range_display.alpha = 100
+        self.range_display.alpha = RANGE_DISPLAY_OPACITY
 
     def acquire_target(self, enemy_list):
         """
@@ -125,8 +125,27 @@ class Tower(arcade.Sprite):
             self.target_dot.visible = False
 
     def attack_update(self, delta_time: float):
+        """Updates the tower's attack logic"""
+        pass
+
+    def upgrade(self):
+        self.level += 1
+
+
+
+class BaseTower(Tower):
+    def __init__(self, tile):
+        super().__init__(
+            tile,
+            range_r = BASE_TOWER_RANGE_RADIUS,
+            freq = BASE_TOWER_FREQUENCY,
+            damage = BASE_TOWER_DAMAGE
+        )
+        self.texture = TOWER_TEXTURES['base']
+
+    def attack_update(self, delta_time: float):
         """
-        Updates the tower's attack logic
+        Attack the target enemy alone
         """
         if self.on_target is None:
             return
@@ -141,12 +160,36 @@ class Tower(arcade.Sprite):
             # Reset cooldown
             self.cooldown = 1.0 / self.frequency
 
-    def upgrade(self):
-        self.level += 1
 
 
-
-class BaseTower(Tower):
+class AOETower(Tower):
     def __init__(self, tile):
-        super().__init__(tile, range_r=100, freq=1)
-        self.texture = TOWER_TEXTURES['base']
+        super().__init__(
+            tile,
+            range_r = AOE_RANGE_RADIUS,
+            freq = AOE_FREQUENCY,
+            damage=AOE_DAMAGE
+        )
+        self.texture = TOWER_TEXTURES['AOE']
+
+        # AOE specific variables
+        self.AOE_radius = AOE_DAMAGE_RADIUS
+        self.damage_enemy_list : list[Enemy] = []
+
+    def attack_update(self, delta_time: float):
+        """
+        Attack all enemies within the AOE radius
+        """
+        if self.on_target is None:
+            return
+
+        # Count down cooldown
+        self.cooldown -= delta_time
+
+        if self.cooldown <= 0:
+            # Fire! Damage all enemies in the list
+            for enemy in self.damage_enemy_list:
+                enemy.deal_damage(self.damage)
+
+            # Reset cooldown
+            self.cooldown = 1.0 / self.frequency
