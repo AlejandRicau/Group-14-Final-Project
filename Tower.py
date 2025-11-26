@@ -19,9 +19,6 @@ class Tower(arcade.Sprite):
         self.target_dot = None
         self.create_target_dot()
 
-        # create the tower attack visual effect
-        self.visual_effect = []
-
         self.frequency = freq       #<-- How often the tower attacks [1/second]
         self.on_target: Enemy | None = None       #<-- Enemy currently being targeted
         self.damage = damage
@@ -130,12 +127,22 @@ class Tower(arcade.Sprite):
             self.target_dot.center_y = self.center_y
             self.target_dot.visible = False
 
-    def attack_update(self, delta_time: float):
-        """Manage cooldown and return immediately if no target"""
-        # Count down cooldown and return if no target
+    def _fire_condition(self, delta_time: float):
+        """
+        Update the cooldown timer.
+        Returns True if the tower is ready to attack this frame.
+        """
+        # Reduce cooldown
         self.cooldown = max(0.0, self.cooldown - delta_time)
+
+        # Early exit conditions
         if self.on_target is None:
-            return
+            return False  # no target, cannot fire
+        if self.cooldown > 0:
+            return False  # still cooling down
+
+        # Cooldown expired and target exists
+        return True
 
     def upgrade(self):
         self.level += 1
@@ -152,11 +159,11 @@ class BaseTower(Tower):
         )
         self.texture = TOWER_TEXTURES['base']
 
-    def attack_update(self, delta_time: float):
+    def attack_update(self, delta_time, visual_effect_list):
         """
         Attack the target enemy alone
         """
-        super().attack_update(delta_time)
+        super()._update_cooldown(delta_time)
 
         if self.cooldown <= 0 and self.on_target:
             # Fire!
@@ -179,11 +186,11 @@ class AOETower(Tower):
         self.AOE_radius = AOE_DAMAGE_RADIUS
         self.damage_enemy_list : list[Enemy] = []
 
-    def attack_update(self, delta_time: float):
+    def attack_update(self, delta_time, visual_effect_list):
         """
         Attack all enemies within the AOE radius
         """
-        super().attack_update(delta_time)
+        super()._update_cooldown(delta_time)
 
         if self.cooldown <= 0 and self.on_target:
             # Fire! Damage all enemies in the list
@@ -230,27 +237,27 @@ class LaserTower(Tower):
         self.is_laser_list_complete = False
         self.laser_length = LASER_TOWER_BEAM_LENGTH
 
-    def attack_update(self, delta_time: float):
+    def attack_update(self, delta_time, visual_effect_list):
         """
         Attack all enemies in the chain
         """
-        super().attack_update(delta_time)
+        if not self._fire_condition(delta_time): return
 
-        if self.cooldown <= 0 and self.is_laser_list_complete and self.on_target:
-            # Fire! Damage all enemies in the list
-            for enemy in self.laser_enemy_list:
-                enemy.deal_damage(self.damage)
+        # Create visual effect
+        laser_effect = LaserEffect(
+            self.center_x, self.center_y,
+            self.on_target.center_x, self.on_target.center_y
+        )
+        visual_effect_list.append(laser_effect)
 
-            # Create visual effect
-            laser_effect = LaserEffect(
-                self.center_x, self.center_y,
-                self.on_target.center_x, self.on_target.center_y
-            )
-            self.visual_effect.append(laser_effect)
+        # Fire! Damage all enemies in the list
+        for enemy in self.laser_enemy_list:
+            enemy.deal_damage(self.damage)
+            print(f"[DEBUG] Damaged enemy at ({enemy.center_x}, {enemy.center_y}), health={enemy.health}")
 
-            # Reset laser list and cooldown
-            self.is_laser_list_complete = False
-            self.cooldown = 1.0 / self.frequency        #<-- Reset cooldown
+        # Reset laser list and cooldown
+        self.laser_enemy_list.clear()
+        self.cooldown = 1.0 / self.frequency        #<-- Reset cooldown
 
     def acquire_target(self, enemy_list: list[Enemy]):
         """
@@ -276,6 +283,7 @@ class LaserTower(Tower):
         y_beam_end = self.center_y + dy * self.laser_length
 
         '''add enemy to the list if it's on the beam'''
+        self.laser_enemy_list = []
         for enemy in enemy_list:
             dist_to_beam = distance_point_to_segment(
                 enemy.center_x, enemy.center_y,
@@ -284,6 +292,3 @@ class LaserTower(Tower):
             )
             if dist_to_beam <= TILE_SIZE / 2:
                 self.laser_enemy_list.append(enemy)
-
-        self.is_laser_list_complete = True
-

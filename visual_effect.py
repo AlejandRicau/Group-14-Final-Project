@@ -13,7 +13,7 @@ class LaserEffect(arcade.Sprite):
         self.color: tuple[int, int, int] = arcade.color.RED
         self.width = 3
 
-    def visual_update(self, delta_time):
+    def update(self, delta_time):
         self.elapsed += delta_time
         if self.elapsed >= self.duration:
             self.kill()  # remove from sprite list
