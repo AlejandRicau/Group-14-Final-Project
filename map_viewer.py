@@ -3,7 +3,7 @@ from helper_functions import *
 from Map import Map
 from Tile import Tile
 from Enemy import Enemy
-from Tower import BaseTower
+from Tower import BaseTower, AOETower
 import arcade
 import arcade.gui
 import random
@@ -152,39 +152,39 @@ class MapViewer(arcade.Window):
             x, y = self.camera.position
             self.camera.position = (x + dx, y + dy)
 
-    def on_mouse_press(self, x: int, y: int, button: int, modifiers: int):
-        """Functional response of mouse press"""
+    def on_mouse_press(self, x, y, button, modifiers):
+        """
+        Functional response of mouse press
+
+        Args:
+            x (int): x position of mouse
+            y (int): y position of mouse
+            button (int): button pressed
+            modifiers (int): modifiers pressed
+        """
 
         # convert mouse pos to world pos
         world_point = self.camera.unproject((x, y))
         world_x, world_y, _ = world_point  # `unproject` returns a Vec3
 
         # get the tile on the position
-        clicked_tile = arcade.get_sprites_at_point((world_x, world_y), self.background_list)[0]
+        clicked_tile = arcade.get_sprites_at_point(
+            (world_x, world_y),
+            self.background_list
+        )[0]
 
         # mouse left click
         if button == arcade.MOUSE_BUTTON_LEFT:
+            if arcade.key.KEY_1 in self.keys_held:
+                # Try to place a tower
+                self.try_place_tower(clicked_tile, t_type="base")
 
-            # Logic 1: Add Tower (If T is held)
-            if arcade.key.T in self.keys_held:
-                if not clicked_tile.tower:
+            elif arcade.key.KEY_2 in self.keys_held:
+                # Try to place an AOE tower
+                self.try_place_tower(clicked_tile, t_type="AOE")
 
-                    # --- NEW: Check Affordability ---
-                    if self.game_manager.can_afford(TOWER_COST):
-                        if clicked_tile.is_valid_tower_location(self.map):
-                            self.add_tower(clicked_tile)
-                            self.game_manager.spend_money(TOWER_COST)
-                            print(f"Tower placed! Remaining Money: {self.game_manager.money}")
-                        else:
-                            print("Invalid Location!")
-                    else:
-                        print("Not enough money!")
-
-                else:
-                    clicked_tile.tower.toggle_range_display()
-
-            # Logic 2: Spawn Enemy (If clicking on a SPAWN tile)
-            elif clicked_tile.get_state() == 'spawn':
+            elif clicked_tile.get_state() == "spawn":
+                # Spawn enemy if spawn tile clicked
                 self.spawn_enemy_at_tile(clicked_tile)
 
     def on_key_press(self, symbol, modifiers):
@@ -230,6 +230,33 @@ class MapViewer(arcade.Window):
         if symbol in self.keys_held:
             self.keys_held.remove(symbol)
 
+    def try_place_tower(self, tile, t_type="base"):
+        """
+        Tries to place a tower at the given tile.
+
+        Args:
+            tile (Tile): The tile to place the tower on.
+            t_type (str): The type of tower to place.
+        """
+        if tile.tower:
+            # If tower already exists, toggle range display
+            tile.tower.toggle_range_display()
+            return
+
+        if not self.game_manager.can_afford(TOWER_COST):
+            # check for affordability
+            print("Not enough money!")
+            return
+
+        if not tile.is_valid_tower_location(self.map):
+            # check for validity
+            print("Invalid location for a tower, has to be next to path!")
+            return
+
+        # add tower and spend money
+        self.add_tower(tile, t_type)
+        self.game_manager.spend_money(TOWER_COST)
+        print(f"Tower placed! Remaining Money: {self.game_manager.money}")
 
     def spawn_enemy_at_tile(self, start_tile):
         """
@@ -304,16 +331,22 @@ class MapViewer(arcade.Window):
                     self.range_display_list.append(tile.tower.target_dot)
 
 
-    def add_tower(self, tile):
+    def add_tower(self, tile, t_type="base"):
         """
         Adds a tower to the map at the tile hovered by the mouse.
         """
-        # check validity
-        if not tile.is_valid_tower_location(self.map):
+        # define tower based on type
+        if t_type == "base":
+            tower = BaseTower(tile)
+
+        elif t_type == "AOE":
+            tower = AOETower(tile)
+
+        else:
+            print("Invalid tower type!")
             return
 
         # add tower and link it to the tile
-        tower = BaseTower(tile)
         tile.link_tower(tower)
 
         # add tower to the tower list

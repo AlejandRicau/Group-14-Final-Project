@@ -1,9 +1,17 @@
 from constants import *
-from Tile import Tile
 from helper_functions import *
+from Tile import Tile
 
 class Map:
     def __init__(self, width, height, difficulty=4):
+        """
+        Initializes the map with the given width and height.
+
+        Args:
+            width (int): The width of the map.
+            height (int): The height of the map.
+            difficulty (int): The difficulty of the map.
+        """
         self.width = width
         self.height = height
         self.difficulty = difficulty
@@ -23,7 +31,10 @@ class Map:
         self.spawns = []
         self.goals = []
 
-        spawn_tile, goal_tile = self.generate_opposite_side_positions(offset=SPAWN_GOAL_DISTANCE_FROM_EDGE)
+        '''Generate spawn and goal tiles'''
+        spawn_tile, goal_tile = self.generate_opposite_side_positions(
+            offset=SPAWN_GOAL_DISTANCE_FROM_EDGE
+        )
 
         spawn_tile.set_state('spawn')
         self.spawns.append(spawn_tile)
@@ -33,51 +44,49 @@ class Map:
 
     def make_border(self):
         """Marks the border tiles with a distinct color."""
-        for y in range(self.height):
-            for x in range(self.width):
-                if y in (0, self.height - 1) or x in (0, self.width - 1):
-                    self.map[y][x].set_state('border')
+        # Top and bottom row
+        for x in range(self.width):
+            self.map[0][x].set_state('border')
+            self.map[self.height - 1][x].set_state('border')
 
-    def generate_opposite_side_positions(self, offset=3):
+        # Left and right column (excluding corners already set)
+        for y in range(1, self.height - 1):
+            self.map[y][0].set_state('border')
+            self.map[y][self.width - 1].set_state('border')
+
+    def generate_opposite_side_positions(self, offset=3, offset_range=2):
         """
-        Generates spawn and goal tiles near opposite edges of the map,
-        with random side assignment (left-right or top-bottom).
+        Generates spawn and goal tiles near opposite edges, randomly horizontal or vertical.
 
         Args:
             offset (int): Minimum distance from the border.
+            offset_range (int): Range of variation from offset.
 
         Returns:
             tuple(Tile, Tile): (spawn_tile, goal_tile)
         """
-        # Randomly choose orientation
-        orientation = random.choice(["horizontal", "vertical"])
+        horizontal = random.choice([True, False])
 
-        if orientation == "horizontal":
-            # Randomly choose which side the spawn starts on
+        if horizontal:
+            # Randomly pick which side the spawn is on
             spawn_on_left = random.choice([True, False])
-
-            if spawn_on_left:
-                spawn_x = random.randint(offset, offset + 2)
-                goal_x = random.randint(self.width - 1 - offset - 2, self.width - 1 - offset)
-            else:
-                spawn_x = random.randint(self.width - 1 - offset - 2, self.width - 1 - offset)
-                goal_x = random.randint(offset, offset + 2)
-
-            spawn_y = random.randint(offset, self.height - 1 - offset)
-            goal_y = random.randint(offset, self.height - 1 - offset)
+            spawn_x = random.randint(offset, offset + offset_range) if spawn_on_left else \
+                random.randint(self.width - 1 - offset - offset_range, self.width - 1 - offset)
+            goal_x = random.randint(self.width - 1 - offset - offset_range,
+                                    self.width - 1 - offset) if spawn_on_left else \
+                random.randint(offset, offset + offset_range)
+            # y positions random within bounds
+            spawn_y = goal_y = random.randint(offset, self.height - 1 - offset)
 
         else:  # vertical
             spawn_on_top = random.choice([True, False])
-
-            if spawn_on_top:
-                spawn_y = random.randint(offset, offset + 2)
-                goal_y = random.randint(self.height - 1 - offset - 2, self.height - 1 - offset)
-            else:
-                spawn_y = random.randint(self.height - 1 - offset - 2, self.height - 1 - offset)
-                goal_y = random.randint(offset, offset + 2)
-
-            spawn_x = random.randint(offset, self.width - 1 - offset)
-            goal_x = random.randint(offset, self.width - 1 - offset)
+            spawn_y = random.randint(offset, offset + offset_range) if spawn_on_top else \
+                random.randint(self.height - 1 - offset - offset_range, self.height - 1 - offset)
+            goal_y = random.randint(self.height - 1 - offset - offset_range,
+                                    self.height - 1 - offset) if spawn_on_top else \
+                random.randint(offset, offset + offset_range)
+            # x positions random within bounds
+            spawn_x = goal_x = random.randint(offset, self.width - 1 - offset)
 
         return self.map[spawn_y][spawn_x], self.map[goal_y][goal_x]
 
@@ -103,23 +112,22 @@ class Map:
         x_offset = (new_width - self.width) // 2
         y_offset = (new_height - self.height) // 2
 
-        # --- Copy old tiles into new map ---
+        # Copy old tiles into new map
         for y in range(new_height):
             for x in range(new_width):
                 old_x = x - x_offset
                 old_y = y - y_offset
 
-                if 0 <= old_x < self.width and 0 <= old_y < self.height:
-                    old_tile = self.map[old_y][old_x]
-                    new_tile = old_tile
-                    # This updates the tile object's internal x,y to the NEW coordinates
-                    new_tile.update_position(x, y)
+                if 0 <= old_x < self.width and 0 <= old_y < self.height:    #
+                    new_tile = self.map[old_y][old_x]
+                    new_tile.update_position(x, y)  # updates the tile object's internal x,y
+
                 else:
                     new_tile = Tile(x, y)
 
                 new_map[y][x] = new_tile
 
-        # --- Clear all old borders that are now inside the new map ---
+        # Clear all old borders that are now inside the new map
         for row in new_map:
             for tile in row:
                 if tile.get_state() == 'border':
