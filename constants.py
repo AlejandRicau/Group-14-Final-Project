@@ -97,7 +97,7 @@ TUNNEL_TEXTURES = generate_tunnel_textures()
 
 # Tower constants
 TOWER_SIZE = (TILE_SIZE-5, TILE_SIZE-5)
-RANGE_DISPLAY_OPACITY = 100     # out of 255
+RANGE_DISPLAY_OPACITY = 50     # out of 255
 
 # Base tower constants
 BASE_TOWER_DAMAGE = 50

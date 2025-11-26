@@ -232,28 +232,34 @@ class LaserTower(Tower):
         )
         self.texture = TOWER_TEXTURES['laser']
 
-        # Chain specific variables
+        # Laser specific variables
         self.laser_enemy_list : list[Enemy] = []
         self.is_laser_list_complete = False
         self.laser_length = LASER_TOWER_BEAM_LENGTH
+        self.pt_beam_end = (0, 0)
 
     def attack_update(self, delta_time, visual_effect_list):
         """
         Attack all enemies in the chain
+
+        args:
+            delta_time (float): Time elapsed since last frame
+            visual_effect_list (list): List of all visual effects in the game
         """
+        # Early exit conditions
         if not self._fire_condition(delta_time): return
 
         # Create visual effect
+        x_end, y_end = self.pt_beam_end
         laser_effect = LaserEffect(
             self.center_x, self.center_y,
-            self.on_target.center_x, self.on_target.center_y
-        )
-        visual_effect_list.append(laser_effect)
+            x_end, y_end)
+
+        visual_effect_list.append(laser_effect)     #<-- Add visual effect to the list
 
         # Fire! Damage all enemies in the list
         for enemy in self.laser_enemy_list:
             enemy.deal_damage(self.damage)
-            print(f"[DEBUG] Damaged enemy at ({enemy.center_x}, {enemy.center_y}), health={enemy.health}")
 
         # Reset laser list and cooldown
         self.laser_enemy_list.clear()
@@ -281,6 +287,7 @@ class LaserTower(Tower):
         # multiply the vector by the beam length
         x_beam_end = self.center_x + dx * self.laser_length
         y_beam_end = self.center_y + dy * self.laser_length
+        self.pt_beam_end = (x_beam_end, y_beam_end)     #<-- Store the end point of the beam
 
         '''add enemy to the list if it's on the beam'''
         self.laser_enemy_list = []
