@@ -111,6 +111,12 @@ AOE_FREQUENCY = .6
 AOE_RANGE_RADIUS = 150
 AOE_DAMAGE_RADIUS = 15
 
+# Chain tower constants
+CHAIN_TOWER_DAMAGE = 25
+CHAIN_TOWER_FREQUENCY = .5
+CHAIN_TOWER_RANGE_RADIUS = 75
+CHAIN_TOWER_CHAIN_LENGTH = 15
+
 # Tower textures
 TOWER_TEXTURES = {
     "base": arcade.Texture(
@@ -124,6 +130,12 @@ TOWER_TEXTURES = {
         image=Image.new(
             "RGBA", TOWER_SIZE,
             (*arcade.color.YELLOW[:3], 255))
+    ),
+    "chain": arcade.Texture(
+        name="chain",
+        image=Image.new(
+            "RGBA", TOWER_SIZE,
+            (*arcade.color.LIGHT_GREEN[:3], 255))
     ),
 }
 

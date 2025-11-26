@@ -3,7 +3,7 @@ from helper_functions import *
 from Map import Map
 from Tile import Tile
 from Enemy import Enemy
-from Tower import BaseTower, AOETower
+from Tower import BaseTower, AOETower, ChainTower
 import arcade
 import arcade.gui
 import random
@@ -129,28 +129,14 @@ class MapViewer(arcade.Window):
         # Update tower detection
         for tower in self.tower_list:
             tower.acquire_target(self.enemy_list)
+            tower.attack_update(delta_time)
+            print(tower.cooldown)
 
         # Update UI Values
         self.update_ui_values()
 
-        # Update tower attacks
-        for tower in self.tower_list:
-            tower.attack_update(delta_time)
-
-        # Smooth camera movement
-        dx = dy = 0
-        if arcade.key.LEFT in self.keys_held:
-            dx -= self.camera_speed
-        if arcade.key.RIGHT in self.keys_held:
-            dx += self.camera_speed
-        if arcade.key.UP in self.keys_held:
-            dy += self.camera_speed
-        if arcade.key.DOWN in self.keys_held:
-            dy -= self.camera_speed
-
-        if dx != 0 or dy != 0:
-            x, y = self.camera.position
-            self.camera.position = (x + dx, y + dy)
+        # Handle camera movement
+        self.handle_camera_movement()
 
     def on_mouse_press(self, x, y, button, modifiers):
         """
@@ -182,6 +168,10 @@ class MapViewer(arcade.Window):
             elif arcade.key.KEY_2 in self.keys_held:
                 # Try to place an AOE tower
                 self.try_place_tower(clicked_tile, t_type="AOE")
+
+            elif arcade.key.KEY_3 in self.keys_held:
+                # Try to place a Chain tower
+                self.try_place_tower(clicked_tile, t_type="chain")
 
             elif clicked_tile.get_state() == "spawn":
                 # Spawn enemy if spawn tile clicked
@@ -229,6 +219,20 @@ class MapViewer(arcade.Window):
     def on_key_release(self, symbol, modifiers):
         if symbol in self.keys_held:
             self.keys_held.remove(symbol)
+
+    def handle_camera_movement(self):
+        dx = (
+                (-self.camera_speed if arcade.key.LEFT in self.keys_held else 0)
+            +   (self.camera_speed if arcade.key.RIGHT in self.keys_held else 0)
+        )
+        dy = (
+                (self.camera_speed if arcade.key.UP in self.keys_held else 0)
+            +   (-self.camera_speed if arcade.key.DOWN in self.keys_held else 0)
+        )
+
+        if dx or dy:
+            x, y = self.camera.position
+            self.camera.position = (x + dx, y + dy)
 
     def try_place_tower(self, tile, t_type="base"):
         """
@@ -341,6 +345,9 @@ class MapViewer(arcade.Window):
 
         elif t_type == "AOE":
             tower = AOETower(tile)
+
+        elif t_type == "chain":
+            tower = ChainTower(tile)
 
         else:
             print("Invalid tower type!")

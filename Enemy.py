@@ -71,3 +71,6 @@ class Enemy(arcade.Sprite):
             angle = math.atan2(y_diff, x_diff)
             self.center_x += math.cos(angle) * move_distance
             self.center_y += math.sin(angle) * move_distance
+
+    def distance_to(self, other):
+        return math.sqrt((self.center_x - other.center_x) ** 2 + (self.center_y - other.center_y) ** 2)

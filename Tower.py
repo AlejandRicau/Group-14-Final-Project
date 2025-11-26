@@ -125,8 +125,11 @@ class Tower(arcade.Sprite):
             self.target_dot.visible = False
 
     def attack_update(self, delta_time: float):
-        """Updates the tower's attack logic"""
-        pass
+        """Manage cooldown and return immediately if no target"""
+        # Count down cooldown and return if no target
+        self.cooldown = max(0.0, self.cooldown - delta_time)
+        if self.on_target is None:
+            return
 
     def upgrade(self):
         self.level += 1
@@ -147,13 +150,9 @@ class BaseTower(Tower):
         """
         Attack the target enemy alone
         """
-        if self.on_target is None:
-            return
+        super().attack_update(delta_time)
 
-        # Count down cooldown
-        self.cooldown -= delta_time
-
-        if self.cooldown <= 0:
+        if self.cooldown <= 0 and self.on_target:
             # Fire!
             self.on_target.deal_damage(self.damage)
 
@@ -180,13 +179,9 @@ class AOETower(Tower):
         """
         Attack all enemies within the AOE radius
         """
-        if self.on_target is None:
-            return
+        super().attack_update(delta_time)
 
-        # Count down cooldown
-        self.cooldown -= delta_time
-
-        if self.cooldown <= 0:
+        if self.cooldown <= 0 and self.on_target:
             # Fire! Damage all enemies in the list
             for enemy in self.damage_enemy_list:
                 enemy.deal_damage(self.damage)
@@ -213,3 +208,72 @@ class AOETower(Tower):
             dist_sq = dx*dx + dy*dy
             if dist_sq <= self.AOE_radius * self.AOE_radius:    #<-- If enemy is within AOE radius
                 self.damage_enemy_list.append(enemy)        #<-- Add enemy to the list
+
+
+
+class ChainTower(Tower):
+    def __init__(self, tile):
+        super().__init__(
+            tile,
+            range_r = CHAIN_TOWER_RANGE_RADIUS,
+            freq = CHAIN_TOWER_FREQUENCY,
+            damage = CHAIN_TOWER_DAMAGE
+        )
+        self.texture = TOWER_TEXTURES['chain']
+
+        # Chain specific variables
+        self.chain_enemy_list : list[Enemy] = []
+        self.is_chain_list_complete = False
+        self.chain_length = CHAIN_TOWER_CHAIN_LENGTH
+
+    def attack_update(self, delta_time: float):
+        """
+        Attack all enemies in the chain
+        """
+        super().attack_update(delta_time)
+
+        if self.cooldown <= 0 and self.is_chain_list_complete:
+            # Fire! Damage all enemies in the list
+            for enemy in self.chain_enemy_list:
+                enemy.deal_damage(self.damage)
+                self.is_chain_list_complete = False
+
+            # Reset cooldown
+            self.cooldown = 1.0 / self.frequency
+
+    def acquire_target(self, enemy_list: list[Enemy]):
+        """
+        Acquire all enemies within the AOE radius
+        """
+        # Acquire the closest enemy and return if none
+        super().acquire_target(enemy_list)
+        if self.on_target is None:
+            return
+
+        # duplicate the enemy list
+        chained_candidates = list(enemy_list)
+        self.is_chain_list_complete = False
+
+        # Iteratively find all enemies along the chain
+        curr = self.on_target
+        while chained_candidates:
+            # Add the current enemy to the chain then remove it from the candidate list
+            self.chain_enemy_list.append(curr)
+            chained_candidates.remove(curr)
+
+            # Stop if no more candidates
+            if not chained_candidates:
+                self.is_chain_list_complete = True
+                break
+
+            # Find the closest enemy to the current enemy
+            next_enemy = min(
+                chained_candidates,
+                key=lambda e: curr.distance_to(e)
+            )
+
+            # Check if the next enemy is within the chain length
+            if curr.distance_to(next_enemy) > self.chain_length:
+                self.is_chain_list_complete = True      # Mark the chain list as complete#
+                break
+            curr = next_enemy       # Move to the next enemy
