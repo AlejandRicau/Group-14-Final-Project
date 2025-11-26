@@ -193,3 +193,23 @@ class AOETower(Tower):
 
             # Reset cooldown
             self.cooldown = 1.0 / self.frequency
+
+    def acquire_target(self, enemy_list):
+        """
+        Acquire all enemies within the AOE radius
+        """
+        # Acquire the closest enemy
+        super().acquire_target(enemy_list)
+
+        # check if the closest enemy is within the AOE radius
+        if self.on_target is None:
+            return
+
+        # Acquire all enemies within the AOE radius
+        self.damage_enemy_list = []
+        for enemy in enemy_list:
+            dx = enemy.center_x - self.on_target.center_x
+            dy = enemy.center_y - self.on_target.center_y
+            dist_sq = dx*dx + dy*dy
+            if dist_sq <= self.AOE_radius * self.AOE_radius:    #<-- If enemy is within AOE radius
+                self.damage_enemy_list.append(enemy)        #<-- Add enemy to the list
