@@ -38,6 +38,7 @@ class MapViewer(arcade.Window):
         self.tower_list = arcade.SpriteList()
         self.enemy_list = arcade.SpriteList()
         self.range_display_list = arcade.SpriteList()
+        self.bar_list = arcade.SpriteList()
 
         # Initialize Managers
         self.game_manager = GameManager()
@@ -59,50 +60,86 @@ class MapViewer(arcade.Window):
         self.keys_held = set()
 
     def setup_ui(self):
-        """Creates the UI widgets and layout."""
+        """Creates the UI widgets and layout with Icons and a Background."""
 
-        # 1. Create a Layout (AnchorLayout is best for HUDs)
+        # 1. Load Textures for Icons (Using built-in resources for now)
+        # You can replace these strings with paths to your own images
+        icon_money = arcade.load_texture(":resources:images/items/coinGold.png")
+        icon_lives = arcade.load_texture(":resources:images/items/gemRed.png")  # Using a red gem as a 'heart' proxy
+
+        # 2. Create the Layout
         self.ui_layout = arcade.gui.UIAnchorLayout()
 
-        # 2. Create the Money Label
-        self.money_label = arcade.gui.UILabel(
-            text=f"Money: ${self.game_manager.money}",
-            font_size=24,
-            text_color=arcade.color.WHITE,
-            font_name="Kenney Future"  # Optional: looks game-y
+        # --- HELPER: Create a "Stat Group" (Icon + Label) ---
+        def create_stat_group(icon_texture, label_text, text_color):
+            # The Icon
+            icon_widget = arcade.gui.UIImage(
+                texture=icon_texture,
+                width=32, height=32
+            )
+
+            # The Label
+            label_widget = arcade.gui.UILabel(
+                text=label_text,
+                font_size=20,
+                font_name="Kenney Future",
+                text_color=text_color
+            )
+
+            # Combine them horizontally
+            group = arcade.gui.UIBoxLayout(vertical=False, space_between=10, align="center")
+            group.add(icon_widget)
+            group.add(label_widget)
+
+            return group, label_widget
+
+        # 3. Create Money Group
+        money_group, self.money_label = create_stat_group(
+            icon_money,
+            str(self.game_manager.money),
+            arcade.color.GOLD
         )
 
-        # 3. Create the Lives Label
-        self.lives_label = arcade.gui.UILabel(
-            text=f"Lives: {self.game_manager.lives}",
-            font_size=24,
-            text_color=arcade.color.RED,
-            font_name="Kenney Future"
+        # 4. Create Lives Group
+        lives_group, self.lives_label = create_stat_group(
+            icon_lives,
+            str(self.game_manager.lives),
+            arcade.color.RED
         )
 
-        # 4. Create a container for the stats (Horizontal Box)
-        # This keeps them side-by-side neatly
-        stats_box = arcade.gui.UIBoxLayout(vertical=False, space_between=20)
-        stats_box.add(self.money_label)
-        stats_box.add(self.lives_label)
+        # 5. Combine Stats into one main container
+        stats_box = arcade.gui.UIBoxLayout(vertical=False, space_between=30)
+        stats_box.add(money_group)
+        stats_box.add(lives_group)
 
-        # 5. Add the box to the Anchor Layout (Bottom Left)
+        # 6. Add Background and Padding (The "Pretty" part)
+        # We wrap the stats_box in a container that has a background color
+        stats_container = stats_box.with_padding(top=10, bottom=10, left=20, right=20)
+
+        # Add a dark semi-transparent background
+        stats_container = stats_container.with_background(
+            color=(0, 0, 0, 150)  # Black with alpha 150
+        )
+
+        # Add a border (optional)
+        stats_container = stats_container.with_border(width=2, color=arcade.color.WHITE)
+
+        # 7. Add to screen (Top Left or Bottom Left)
         self.ui_layout.add(
-            child=stats_box,
+            child=stats_container,
             anchor_x="left",
             anchor_y="bottom",
-            align_x=20,  # Padding from left edge
-            align_y=20  # Padding from bottom edge
+            align_x=20,
+            align_y=20
         )
 
-        # 6. Add the layout to the manager
         self.ui_manager.add(self.ui_layout)
 
     def update_ui_values(self):
         """Updates the text of the labels."""
-        # This is efficient because UILabel only re-renders if the string is different
-        self.money_label.text = f"Money: ${self.game_manager.money}"
-        self.lives_label.text = f"Lives: {self.game_manager.lives}"
+        # Just set the number, the icon provides the context!
+        self.money_label.text = str(self.game_manager.money)
+        self.lives_label.text = str(self.game_manager.lives)
 
     def on_draw(self):
         self.clear()
@@ -112,6 +149,7 @@ class MapViewer(arcade.Window):
         self.background_list.draw()
         self.tower_list.draw()
         self.enemy_list.draw()
+        self.bar_list.draw()
         self.range_display_list.draw()
 
         # Draw hitboxes
@@ -188,6 +226,7 @@ class MapViewer(arcade.Window):
             self.rebuild_background_list()
             self.tower_list.clear()
             self.enemy_list.clear()
+            self.bar_list.clear()
             self.range_display_list.clear()
 
         elif symbol == arcade.key.P:
@@ -288,10 +327,15 @@ class MapViewer(arcade.Window):
         path_pixels = [(t.center_x, t.center_y) for t in path_tiles]
 
         # 4. Create Enemy
-        enemy = Enemy(path=path_pixels, game_manager=self.game_manager, speed=60)
+        enemy = Enemy(
+            path=path_pixels,
+            game_manager=self.game_manager,
+            bar_list=self.bar_list,  # <--- Pass the list here
+            speed=60
+        )
 
         self.enemy_list.append(enemy)
-        print(f"Spawned enemy. Steps: {len(path_pixels)}")
+
 
     def get_weighted_goal(self, start_tile):
         """
