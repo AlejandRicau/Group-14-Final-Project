@@ -1,6 +1,7 @@
 from constants import *
 from helper_functions import *
 from Tile import Tile
+import random
 
 class Map:
     def __init__(self, width, height, difficulty=4):

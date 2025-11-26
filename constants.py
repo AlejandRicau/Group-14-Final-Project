@@ -1,6 +1,5 @@
 import arcade
 from PIL import Image, ImageDraw
-import random
 
 # Game Constants
 TILE_SIZE = 20
@@ -101,7 +100,7 @@ TOWER_SIZE = (TILE_SIZE-5, TILE_SIZE-5)
 RANGE_DISPLAY_OPACITY = 100     # out of 255
 
 # Base tower constants
-BASE_TOWER_DAMAGE = 40
+BASE_TOWER_DAMAGE = 50
 BASE_TOWER_FREQUENCY = 1
 BASE_TOWER_RANGE_RADIUS = 100
 
@@ -112,10 +111,10 @@ AOE_RANGE_RADIUS = 150
 AOE_DAMAGE_RADIUS = 15
 
 # Chain tower constants
-CHAIN_TOWER_DAMAGE = 25
-CHAIN_TOWER_FREQUENCY = .5
-CHAIN_TOWER_RANGE_RADIUS = 75
-CHAIN_TOWER_CHAIN_LENGTH = 15
+LASER_TOWER_DAMAGE = 200
+LASER_TOWER_FREQUENCY = .5
+LASER_TOWER_RANGE_RADIUS = 75
+LASER_TOWER_BEAM_LENGTH = 150
 
 # Tower textures
 TOWER_TEXTURES = {
@@ -131,7 +130,7 @@ TOWER_TEXTURES = {
             "RGBA", TOWER_SIZE,
             (*arcade.color.YELLOW[:3], 255))
     ),
-    "chain": arcade.Texture(
+    "laser": arcade.Texture(
         name="chain",
         image=Image.new(
             "RGBA", TOWER_SIZE,

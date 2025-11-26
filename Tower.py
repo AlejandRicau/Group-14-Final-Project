@@ -155,9 +155,7 @@ class BaseTower(Tower):
         if self.cooldown <= 0 and self.on_target:
             # Fire!
             self.on_target.deal_damage(self.damage)
-
-            # Reset cooldown
-            self.cooldown = 1.0 / self.frequency
+            self.cooldown = 1.0 / self.frequency        # Reset cooldown
 
 
 
@@ -211,20 +209,20 @@ class AOETower(Tower):
 
 
 
-class ChainTower(Tower):
+class LaserTower(Tower):
     def __init__(self, tile):
         super().__init__(
             tile,
-            range_r = CHAIN_TOWER_RANGE_RADIUS,
-            freq = CHAIN_TOWER_FREQUENCY,
-            damage = CHAIN_TOWER_DAMAGE
+            range_r = LASER_TOWER_RANGE_RADIUS,
+            freq = LASER_TOWER_FREQUENCY,
+            damage = LASER_TOWER_DAMAGE
         )
-        self.texture = TOWER_TEXTURES['chain']
+        self.texture = TOWER_TEXTURES['laser']
 
         # Chain specific variables
-        self.chain_enemy_list : list[Enemy] = []
-        self.is_chain_list_complete = False
-        self.chain_length = CHAIN_TOWER_CHAIN_LENGTH
+        self.laser_enemy_list : list[Enemy] = []
+        self.is_laser_list_complete = False
+        self.laser_length = LASER_TOWER_BEAM_LENGTH
 
     def attack_update(self, delta_time: float):
         """
@@ -232,14 +230,12 @@ class ChainTower(Tower):
         """
         super().attack_update(delta_time)
 
-        if self.cooldown <= 0 and self.is_chain_list_complete:
+        if self.cooldown <= 0 and self.is_laser_list_complete and self.on_target:
             # Fire! Damage all enemies in the list
-            for enemy in self.chain_enemy_list:
+            for enemy in self.laser_enemy_list:
                 enemy.deal_damage(self.damage)
-                self.is_chain_list_complete = False
-
-            # Reset cooldown
-            self.cooldown = 1.0 / self.frequency
+            self.is_laser_list_complete = False
+            self.cooldown = 1.0 / self.frequency        #<-- Reset cooldown
 
     def acquire_target(self, enemy_list: list[Enemy]):
         """
@@ -250,30 +246,29 @@ class ChainTower(Tower):
         if self.on_target is None:
             return
 
-        # duplicate the enemy list
-        chained_candidates = list(enemy_list)
-        self.is_chain_list_complete = False
+        '''create beam geometry'''
+        # create vector of the tower to the target
+        dx = self.on_target.center_x - self.center_x
+        dy = self.on_target.center_y - self.center_y
 
-        # Iteratively find all enemies along the chain
-        curr = self.on_target
-        while chained_candidates:
-            # Add the current enemy to the chain then remove it from the candidate list
-            self.chain_enemy_list.append(curr)
-            chained_candidates.remove(curr)
+        # normalize the vector
+        length = (dx*dx + dy*dy) ** 0.5
+        dx /= length
+        dy /= length
 
-            # Stop if no more candidates
-            if not chained_candidates:
-                self.is_chain_list_complete = True
-                break
+        # multiply the vector by the beam length
+        x_beam_end = self.center_x + dx * self.laser_length
+        y_beam_end = self.center_y + dy * self.laser_length
 
-            # Find the closest enemy to the current enemy
-            next_enemy = min(
-                chained_candidates,
-                key=lambda e: curr.distance_to(e)
+        '''add enemy to the list if it's on the beam'''
+        for enemy in enemy_list:
+            dist_to_beam = distance_point_to_segment(
+                enemy.center_x, enemy.center_y,
+                self.center_x, self.center_y,
+                x_beam_end, y_beam_end
             )
+            if dist_to_beam <= TILE_SIZE / 2:
+                self.laser_enemy_list.append(enemy)
 
-            # Check if the next enemy is within the chain length
-            if curr.distance_to(next_enemy) > self.chain_length:
-                self.is_chain_list_complete = True      # Mark the chain list as complete#
-                break
-            curr = next_enemy       # Move to the next enemy
+        self.is_laser_list_complete = True
+

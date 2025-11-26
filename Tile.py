@@ -20,7 +20,9 @@ class Tile(arcade.Sprite):
         return f"({self.x}, {self.y}, self.{self._state})"
 
     def matrix_to_pixel_position(self):
-        self.center_x, self.center_y = tile_to_pixel_center(self.x, self.y, TILE_SIZE)
+        """Converts the tile's matrix position to pixel position."""
+        self.center_x = self.x * TILE_SIZE + TILE_SIZE / 2
+        self.center_y = self.y * TILE_SIZE + TILE_SIZE / 2
 
     def set_state(self, state):
         """Set the tile's state. Valid states: 'spawn', 'goal', 'border', 'path', 'empty'."""

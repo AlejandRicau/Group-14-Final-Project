@@ -3,7 +3,7 @@ from helper_functions import *
 from Map import Map
 from Tile import Tile
 from Enemy import Enemy
-from Tower import BaseTower, AOETower, ChainTower
+from Tower import BaseTower, AOETower, LaserTower
 import arcade
 import arcade.gui
 import random
@@ -112,8 +112,11 @@ class MapViewer(arcade.Window):
         self.background_list.draw()
         self.tower_list.draw()
         self.enemy_list.draw()
-        # self.blocking_sprites.draw_hit_boxes(...) # Optional debug
         self.range_display_list.draw()
+
+        # Draw hitboxes
+        # for enemy in self.enemy_list:
+        #     enemy.draw_hit_box()
 
         # 2. Draw UI
         # The UIManager handles the camera/viewport automatically!
@@ -170,8 +173,8 @@ class MapViewer(arcade.Window):
                 self.try_place_tower(clicked_tile, t_type="AOE")
 
             elif arcade.key.KEY_3 in self.keys_held:
-                # Try to place a Chain tower
-                self.try_place_tower(clicked_tile, t_type="chain")
+                # Try to place a Laser tower
+                self.try_place_tower(clicked_tile, t_type="laser")
 
             elif clicked_tile.get_state() == "spawn":
                 # Spawn enemy if spawn tile clicked
@@ -346,8 +349,8 @@ class MapViewer(arcade.Window):
         elif t_type == "AOE":
             tower = AOETower(tile)
 
-        elif t_type == "chain":
-            tower = ChainTower(tile)
+        elif t_type == "laser":
+            tower = LaserTower(tile)
 
         else:
             print("Invalid tower type!")
