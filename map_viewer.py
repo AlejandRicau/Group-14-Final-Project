@@ -38,6 +38,7 @@ class MapViewer(arcade.Window):
         self.tower_list = arcade.SpriteList()
         self.enemy_list = arcade.SpriteList()
         self.range_display_list = arcade.SpriteList()
+        self.visual_effect_list = arcade.SpriteList()
 
         # Initialize Managers
         self.game_manager = GameManager()
@@ -113,6 +114,7 @@ class MapViewer(arcade.Window):
         self.tower_list.draw()
         self.enemy_list.draw()
         self.range_display_list.draw()
+        self.visual_effect_list.draw()
 
         # Draw hitboxes
         # for enemy in self.enemy_list:
@@ -123,6 +125,9 @@ class MapViewer(arcade.Window):
         self.ui_manager.draw()
 
     def on_update(self, delta_time: float):
+        # clear all visual effects
+        self.visual_effect_list.clear()
+
         # Update all enemies
         self.enemy_list.update()
 
@@ -132,8 +137,7 @@ class MapViewer(arcade.Window):
         # Update tower detection
         for tower in self.tower_list:
             tower.acquire_target(self.enemy_list)
-            tower.attack_update(delta_time)
-            print(tower.cooldown)
+            tower.attack_update(delta_time, self.visual_effect_list)
 
         # Update UI Values
         self.update_ui_values()
