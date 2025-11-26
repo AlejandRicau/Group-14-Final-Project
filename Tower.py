@@ -1,5 +1,6 @@
-from constants import *
 from helper_functions import *
+from visual_effect import *
+from constants import *
 from Enemy import Enemy
 import arcade
 
@@ -9,12 +10,17 @@ class Tower(arcade.Sprite):
         self.tile = tile
         self.level = 1
 
+        # create the tower range visual
         self.range_radius = range_r
         self.range_display = None
         self.create_range_display()
 
+        # create the tower target dot visual
         self.target_dot = None
         self.create_target_dot()
+
+        # create the tower attack visual effect
+        self.visual_effect = []
 
         self.frequency = freq       #<-- How often the tower attacks [1/second]
         self.on_target: Enemy | None = None       #<-- Enemy currently being targeted
@@ -234,6 +240,15 @@ class LaserTower(Tower):
             # Fire! Damage all enemies in the list
             for enemy in self.laser_enemy_list:
                 enemy.deal_damage(self.damage)
+
+            # Create visual effect
+            laser_effect = LaserEffect(
+                self.center_x, self.center_y,
+                self.on_target.center_x, self.on_target.center_y
+            )
+            self.visual_effect.append(laser_effect)
+
+            # Reset laser list and cooldown
             self.is_laser_list_complete = False
             self.cooldown = 1.0 / self.frequency        #<-- Reset cooldown
 
