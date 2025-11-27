@@ -174,8 +174,8 @@ class BaseTower(Tower):
         # Add steam puff centered around the tower when shooting
         visual_effect_list.append(
             SteamPuff(
-                self.center_x,
-                self.center_y))
+                self.center_x, self.center_y,
+                size=TOWER_PUFF_SIZE_BASIC))
 
         # Add bullet
         visual_effect_list.append(
@@ -186,11 +186,14 @@ class BaseTower(Tower):
                 self.on_target.center_y))
 
         # Add smaller steam puff centered around the target when shooting
+        dist = math.hypot(self.center_x, self.center_y, self.on_target.center_x, self.on_target.center_y)
+        delay_time = dist / BULLET_SPEED / CORRECTION_RATIO
         visual_effect_list.append(
             SteamPuff(
                 self.on_target.center_x,
                 self.on_target.center_y,
-                size=3))
+                size = EXPLODE_PUFF_SIZE_BASIC,
+                delay = delay_time))
 
         # deal damage to the target
         self.on_target.deal_damage(self.damage)
@@ -228,6 +231,7 @@ class AOETower(Tower):
 
         # Early exit if not ready to attack
         if not super()._fire_condition(delta_time):
+            # Update the trajectory direction if there is a target
             if self.boom_trajectory_visual_effect and self.on_target :
                 self.boom_trajectory_visual_effect.target_x = self.on_target.center_x
                 self.boom_trajectory_visual_effect.target_y = self.on_target.center_y
@@ -239,27 +243,13 @@ class AOETower(Tower):
             SteamPuff(
                 self.center_x,
                 self.center_y,
-                size=20))
+                size = TOWER_PUFF_SIZE_AOE))
 
         # Add steam boom and store it as an attribute
+        # NOTE: THIS VISUAL ALSO CONTAINS THE METHOD TO DEAL DAMAGE
         self.boom_trajectory_visual_effect = SteamBoom(
-                self.center_x,
-                self.center_y,
-                self.on_target.center_x,
-                self.on_target.center_y)
+                self, visual_effect_list)
         visual_effect_list.append(self.boom_trajectory_visual_effect)
-
-
-        # Add steam puff centered around the target
-        visual_effect_list.append(
-            SteamPuff(
-                self.on_target.center_x,
-                self.on_target.center_y,
-                size=15))
-
-        # Fire! Damage all enemies in the list
-        for enemy in self.damage_enemy_list:
-            enemy.deal_damage(self.damage)
 
         # Reset cooldown
         self.damage_enemy_list.clear()

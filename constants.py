@@ -111,13 +111,23 @@ AOE_FREQUENCY = .75
 AOE_RANGE_RADIUS = 150
 AOE_DAMAGE_RADIUS = 15
 
-# Chain tower constants
+# Laser tower constants
 LASER_TOWER_DAMAGE = 15
 LASER_TOWER_FREQUENCY = .6
 LASER_TOWER_RANGE_RADIUS = 75
 LASER_TOWER_BEAM_LENGTH = 150
 
-# NOTE: Tower Visual Constants are in visual_effect.py
+# NOTE: Some Tower Visual Constants are in visual_effect.py
+# Steam Puff parameters:
+TOWER_PUFF_SIZE_BASIC = 5       # <-- location (tower/enemy) at entry 1
+EXPLODE_PUFF_SIZE_BASIC = 3     # <-- tower type (basic/AOE) at entry 4
+TOWER_PUFF_SIZE_AOE = 20
+EXPLODE_PUFF_SIZE_AOE = 15
+
+# Speed parameters:
+BOOM_SPEED = 200
+BULLET_SPEED = 400
+CORRECTION_RATIO = 10
 
 # Tower textures
 TOWER_TEXTURES = {

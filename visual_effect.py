@@ -68,7 +68,7 @@ class LaserEffect:
 
 
 class Bullet:
-    def __init__(self, start_x, start_y, target_x, target_y, speed=400):
+    def __init__(self, start_x, start_y, target_x, target_y):
         # initialize bullet properties
         self.start_x = start_x
         self.start_y = start_y
@@ -76,7 +76,7 @@ class Bullet:
         self.current_y = start_y
         self.target_x = target_x
         self.target_y = target_y
-        self.speed = speed
+        self.speed = BULLET_SPEED
 
         # Compute normalized direction
         self.dir_x, self.dir_y = unit_direction_vector(start_x, start_y, target_x, target_y)
@@ -117,15 +117,17 @@ class Bullet:
 
 
 class SteamBoom:
-    def __init__(self, start_x, start_y, target_x, target_y, speed=200):
+    def __init__(self, tower, visual_effect_list):
         # initialize steam boom properties
-        self.start_x = start_x
-        self.start_y = start_y
-        self.current_x = start_x
-        self.current_y = start_y
-        self.target_x = target_x
-        self.target_y = target_y
-        self.speed = speed
+        self.tower = tower
+        self.start_x = tower.center_x
+        self.start_y = tower.center_y
+        self.current_x = tower.center_x
+        self.current_y = tower.center_y
+        self.target_x = tower.on_target.center_x
+        self.target_y = tower.on_target.center_y
+        self.speed = BOOM_SPEED
+        self.visual_effect_list = visual_effect_list
 
         # Initialize normalized direction
         self.dir_x, self.dir_y = 1, 1
@@ -134,7 +136,6 @@ class SteamBoom:
         self.can_be_removed = False
         self.trail = []  # Keep past positions for a trailing effect
         self.trail_length = 10  # number of segments in the trail
-        self.time_alive = 0.0
 
     def update(self, delta_time):
         if self.can_be_removed:
@@ -151,12 +152,17 @@ class SteamBoom:
         if len(self.trail) > self.trail_length:
             self.trail.pop(0)
 
-        # Update time alive
-        self.time_alive += delta_time
-
         # Check if reached target
-        if math.hypot(self.current_x - self.start_x, self.current_y - self.start_y) >= \
-           math.hypot(self.target_x - self.start_x, self.target_y - self.start_y):
+        distance_to_target = math.hypot(self.target_x - self.start_x, self.target_y - self.start_y)
+        distance_traveled = math.hypot(self.current_x - self.start_x, self.current_y - self.start_y)
+        if distance_traveled >= distance_to_target:
+            # Spawn the puff effect at target
+            self.visual_effect_list.append(
+                SteamPuff(self.target_x, self.target_y, size=EXPLODE_PUFF_SIZE_AOE)
+            )
+            # deal the damage
+            for enemy in self.tower.damage_enemy_list:
+                enemy.deal_damage(self.tower.damage)
             self.can_be_removed = True
 
     def draw(self):
@@ -175,15 +181,20 @@ class SteamBoom:
 
 
 class SteamPuff:
-    def __init__(self, x, y, size=5):
+    def __init__(self, x, y, size, delay=0):
         self.x = x
         self.y = y
         self.size = size
         self.alpha = 200
         self.time_left = 0.3
+        self.time_delay = delay
         self.can_be_removed = False
 
     def update(self, dt):
+        if self.time_delay > 0:     # updating through the delay time
+            self.time_delay -= dt
+            return
+
         self.time_left -= dt
         self.size += 40 * dt  # grows quickly
         self.alpha = int(200 * (self.time_left / 0.3))
@@ -192,6 +203,9 @@ class SteamPuff:
             self.can_be_removed = True
 
     def draw(self):
+        if self.time_delay > 0:     # delay before drawing
+            return
+
         if self.time_left > 0:
             arcade.draw_circle_filled(
                 self.x, self.y, self.size,
