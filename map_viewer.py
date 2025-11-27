@@ -341,7 +341,7 @@ class MapViewer(arcade.Window):
             path=path_pixels,
             game_manager=self.game_manager,
             bar_list=self.bar_list,  # <--- Pass the list here
-            speed=60
+            speed=30
         )
 
         self.enemy_list.append(enemy)

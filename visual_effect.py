@@ -63,8 +63,7 @@ class LaserEffect:
         arcade.draw_circle_filled(      # pressure ring at the end of beam3
             self.end_x, self.end_y,
             3 * progress ** 2,
-            (200, 200, 200, alpha_of_t)
-        )
+            (200, 200, 200, alpha_of_t))
 
 
 
@@ -80,11 +79,7 @@ class Bullet:
         self.speed = speed
 
         # Compute normalized direction
-        dx = target_x - start_x
-        dy = target_y - start_y
-        distance = math.hypot(dx, dy)
-        self.dir_x = dx / distance
-        self.dir_y = dy / distance
+        self.dir_x, self.dir_y = unit_direction_vector(start_x, start_y, target_x, target_y)
 
         # initialize bullet state
         self.can_be_removed = False
@@ -117,8 +112,65 @@ class Bullet:
             self.current_x,
             self.current_y,
             (255, 255, 255, alpha),
-            2
-        )
+            2)
+
+
+
+class SteamBoom:
+    def __init__(self, start_x, start_y, target_x, target_y, speed=200):
+        # initialize steam boom properties
+        self.start_x = start_x
+        self.start_y = start_y
+        self.current_x = start_x
+        self.current_y = start_y
+        self.target_x = target_x
+        self.target_y = target_y
+        self.speed = speed
+
+        # Initialize normalized direction
+        self.dir_x, self.dir_y = 1, 1
+
+        # initialize bullet state
+        self.can_be_removed = False
+        self.trail = []  # Keep past positions for a trailing effect
+        self.trail_length = 10  # number of segments in the trail
+        self.time_alive = 0.0
+
+    def update(self, delta_time):
+        if self.can_be_removed:
+            return
+
+        # Move projectile based on adjusting direction for correct aiming
+        self.dir_x, self.dir_y = unit_direction_vector(
+            self.current_x, self.current_y, self.target_x, self.target_y)
+        self.current_x += self.dir_x * self.speed * delta_time
+        self.current_y += self.dir_y * self.speed * delta_time
+
+        # Add to trail
+        self.trail.append((self.current_x, self.current_y))
+        if len(self.trail) > self.trail_length:
+            self.trail.pop(0)
+
+        # Update time alive
+        self.time_alive += delta_time
+
+        # Check if reached target
+        if math.hypot(self.current_x - self.start_x, self.current_y - self.start_y) >= \
+           math.hypot(self.target_x - self.start_x, self.target_y - self.start_y):
+            self.can_be_removed = True
+
+    def draw(self):
+        # Draw trail
+        for i, (x, y) in enumerate(self.trail):
+            # older positions are drawn smaller and more transparent,
+            # newer positions are brighter and larger.
+            alpha = int(255 * (i + 1) / len(self.trail))
+            radius = 4 * (i + 1) / len(self.trail)
+            arcade.draw_circle_filled(x, y, radius, (200, 200, 255, alpha))
+
+        # Draw the “head” of the projectile
+        if not self.can_be_removed:
+            arcade.draw_circle_filled(self.current_x, self.current_y, 5, (255, 255, 255))
 
 
 
@@ -126,7 +178,7 @@ class SteamPuff:
     def __init__(self, x, y, size=5):
         self.x = x
         self.y = y
-        self.size = 5
+        self.size = size
         self.alpha = 200
         self.time_left = 0.3
         self.can_be_removed = False
@@ -179,3 +231,11 @@ def draw_line_with_gradient(
 
         arcade.draw_line(x0, y0, x1, y1, color_of_x, width)
 
+def unit_direction_vector(x_start, y_start, x_target, y_target):
+    """
+    Calculate the unit direction vector from start to target
+    """
+    dx = x_target - x_start
+    dy = y_target - y_start
+    distance = math.hypot(dx, dy)
+    return dx / distance, dy / distance

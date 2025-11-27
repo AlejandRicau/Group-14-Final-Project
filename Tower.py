@@ -111,7 +111,7 @@ class Tower(arcade.Sprite):
 
     def create_target_dot(self):
         """Creates a circular target aim as a Sprite"""
-        self.target_dot = arcade.SpriteCircle(5, arcade.color.RED)
+        self.target_dot = arcade.SpriteCircle(TARGET_DOT_RADIUS, arcade.color.RED)
         self.target_dot.visible = False     # Make it invisible
         self.target_dot.center_x = self.tile.center_x
         self.target_dot.center_y = self.tile.center_y
@@ -211,20 +211,59 @@ class AOETower(Tower):
         # AOE specific variables
         self.AOE_radius = AOE_DAMAGE_RADIUS
         self.damage_enemy_list : list[Enemy] = []
+        self.boom_trajectory_visual_effect = None
 
     def attack_update(self, delta_time, visual_effect_list):
         """
         Attack all enemies within the AOE radius
+
+        args:
+            delta_time (float): Time elapsed since last frame
+            visual_effect_list (list): List of all visual effects in the game
         """
-        super()._update_cooldown(delta_time)
+        # reset the trajectory
+        if (self.boom_trajectory_visual_effect
+                and self.boom_trajectory_visual_effect.can_be_removed):
+            self.boom_trajectory_visual_effect = None
 
-        if self.cooldown <= 0 and self.on_target:
-            # Fire! Damage all enemies in the list
-            for enemy in self.damage_enemy_list:
-                enemy.deal_damage(self.damage)
+        # Early exit if not ready to attack
+        if not super()._fire_condition(delta_time):
+            if self.boom_trajectory_visual_effect and self.on_target :
+                self.boom_trajectory_visual_effect.target_x = self.on_target.center_x
+                self.boom_trajectory_visual_effect.target_y = self.on_target.center_y
+            return
 
-            # Reset cooldown
-            self.cooldown = 1.0 / self.frequency
+        '''add visual effect'''
+        # Add steam puff centered around the tower when shooting
+        visual_effect_list.append(
+            SteamPuff(
+                self.center_x,
+                self.center_y,
+                size=20))
+
+        # Add steam boom and store it as an attribute
+        self.boom_trajectory_visual_effect = SteamBoom(
+                self.center_x,
+                self.center_y,
+                self.on_target.center_x,
+                self.on_target.center_y)
+        visual_effect_list.append(self.boom_trajectory_visual_effect)
+
+
+        # Add steam puff centered around the target
+        visual_effect_list.append(
+            SteamPuff(
+                self.on_target.center_x,
+                self.on_target.center_y,
+                size=15))
+
+        # Fire! Damage all enemies in the list
+        for enemy in self.damage_enemy_list:
+            enemy.deal_damage(self.damage)
+
+        # Reset cooldown
+        self.damage_enemy_list.clear()
+        self.cooldown = 1.0 / self.frequency
 
     def acquire_target(self, enemy_list):
         """
