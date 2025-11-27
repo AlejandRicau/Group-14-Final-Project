@@ -1,6 +1,7 @@
 from constants import *
 from random import uniform
 import arcade
+import math
 
 class LaserEffect:
     def __init__(self, start_x, start_y, end_x, end_y):
@@ -9,13 +10,17 @@ class LaserEffect:
         self.start_y = start_y
         self.end_x = end_x
         self.end_y = end_y
-        self.total_time = LASER_VISUAL_EFFECT_DURATION
-        self.time_left = LASER_VISUAL_EFFECT_DURATION
+        self.total_time = 1.5
+        self.time_left = 1.5
+        self.can_be_removed = False
 
     def update(self, delta_time):
         self.time_left -= delta_time
         if self.time_left < 0:
             self.time_left = 0
+
+        if self.time_left <= 0:
+            self.can_be_removed = True
 
     def draw(self):
         if self.time_left <= 0:
@@ -60,6 +65,85 @@ class LaserEffect:
             3 * progress ** 2,
             (200, 200, 200, alpha_of_t)
         )
+
+
+
+class Bullet:
+    def __init__(self, start_x, start_y, target_x, target_y, speed=400):
+        # initialize bullet properties
+        self.start_x = start_x
+        self.start_y = start_y
+        self.current_x = start_x
+        self.current_y = start_y
+        self.target_x = target_x
+        self.target_y = target_y
+        self.speed = speed
+
+        # Compute normalized direction
+        dx = target_x - start_x
+        dy = target_y - start_y
+        distance = math.hypot(dx, dy)
+        self.dir_x = dx / distance
+        self.dir_y = dy / distance
+
+        # initialize bullet state
+        self.can_be_removed = False
+        self.trail_length = 10  # pixels
+        self.time_alive = 0.0
+
+    def update(self, delta_time):
+        if self.can_be_removed:
+            return
+
+        # move the bullet as per its direction
+        move_dist = self.speed * delta_time
+        self.current_x += self.dir_x * move_dist
+        self.current_y += self.dir_y * move_dist
+        self.time_alive += delta_time
+
+        # Check if reached target
+        distance_traveled = math.hypot(self.current_x - self.start_x, self.current_y - self.start_y)
+        distance_total    = math.hypot(self.target_x  - self.start_x, self.target_y  - self.start_y)
+        if distance_traveled >= distance_total:
+            self.can_be_removed = True
+
+    def draw(self):
+        if self.can_be_removed:
+            return
+        alpha = max(0, 255 - int(self.time_alive * 1000))  # fade over time
+        arcade.draw_line(
+            self.current_x - self.dir_x * self.trail_length,
+            self.current_y - self.dir_y * self.trail_length,
+            self.current_x,
+            self.current_y,
+            (255, 255, 255, alpha),
+            2
+        )
+
+
+
+class SteamPuff:
+    def __init__(self, x, y, size=5):
+        self.x = x
+        self.y = y
+        self.size = 5
+        self.alpha = 200
+        self.time_left = 0.3
+        self.can_be_removed = False
+
+    def update(self, dt):
+        self.time_left -= dt
+        self.size += 40 * dt  # grows quickly
+        self.alpha = int(200 * (self.time_left / 0.3))
+
+        if self.time_left <= 0:
+            self.can_be_removed = True
+
+    def draw(self):
+        if self.time_left > 0:
+            arcade.draw_circle_filled(
+                self.x, self.y, self.size,
+                (255, 255, 255, self.alpha))
 
 
 

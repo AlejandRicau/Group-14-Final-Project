@@ -162,13 +162,39 @@ class BaseTower(Tower):
     def attack_update(self, delta_time, visual_effect_list):
         """
         Attack the target enemy alone
-        """
-        super()._update_cooldown(delta_time)
 
-        if self.cooldown <= 0 and self.on_target:
-            # Fire!
-            self.on_target.deal_damage(self.damage)
-            self.cooldown = 1.0 / self.frequency        # Reset cooldown
+        Args:
+            delta_time (float): Time elapsed since last frame
+            visual_effect_list (list): List of all visual effects in the game
+        """
+        # Early exit if not ready to attack
+        if not super()._fire_condition(delta_time): return
+
+        '''add visual effect'''
+        # Add steam puff centered around the tower when shooting
+        visual_effect_list.append(
+            SteamPuff(
+                self.center_x,
+                self.center_y))
+
+        # Add bullet
+        visual_effect_list.append(
+            Bullet(
+                self.center_x,
+                self.center_y,
+                self.on_target.center_x,
+                self.on_target.center_y))
+
+        # Add smaller steam puff centered around the target when shooting
+        visual_effect_list.append(
+            SteamPuff(
+                self.on_target.center_x,
+                self.on_target.center_y,
+                size=3))
+
+        # deal damage to the target
+        self.on_target.deal_damage(self.damage)
+        self.cooldown = 1.0 / self.frequency        # Reset cooldown
 
 
 

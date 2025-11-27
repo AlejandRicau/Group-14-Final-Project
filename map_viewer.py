@@ -180,7 +180,7 @@ class MapViewer(arcade.Window):
         # Update visual effects
         for vis in self.visual_effect_list[:]:
             vis.update(delta_time)
-            if vis.time_left <= 0:
+            if vis.can_be_removed:
                 self.visual_effect_list.remove(vis)
 
         # Update UI Values
