@@ -160,3 +160,31 @@ SPAWN_GOAL_DISTANCE_FROM_EDGE = 2
 # This is to ensure that the new spawn and goal are not too close to the existing spawn and goal
 # This is going to be the side length of a square that's 3x3 centered on the new point
 DX_REGION_OF_ISOLATION = 3
+
+# ==========================================
+#       Game Pace Curves
+# ==========================================
+
+# 1. How many enemies spawn in a given wave?
+# Example: Wave 1 = 5 enemies. Wave 10 = 23 enemies.
+GET_ENEMY_COUNT = lambda wave: int(5 + (wave * 1.8))
+
+# 2. How fast do enemies spawn? (Seconds between enemies)
+# Example: Starts at 1.5s, gets faster but caps at 0.2s minimum
+GET_SPAWN_INTERVAL = lambda wave: max(0.2, 1.5 - (wave * 0.05))
+
+# 3. How fast do the enemies move?
+# Example: Starts at 30, gets faster by 2 per wave
+GET_ENEMY_SPEED = lambda wave: 30 + (wave * 2)
+
+# 4. When should the map EXPAND?
+# Example: Expands every 5 waves (Wave 5, 10, 15...)
+SHOULD_EXPAND = lambda wave: (wave % 5 == 0)
+
+# 5. When should we add a NEW SPAWN point?
+# Example: Adds a spawn every 4 waves (Wave 4, 8, 12...)
+SHOULD_ADD_SPAWN = lambda wave: (wave % 4 == 0)
+
+# 6. When should we add a NEW GOAL point?
+# Example: Adds a goal every 6 waves
+SHOULD_ADD_GOAL = lambda wave: (wave % 6 == 0)

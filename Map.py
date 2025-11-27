@@ -57,7 +57,8 @@ class Map:
 
     def generate_opposite_side_positions(self, offset=3, offset_range=2):
         """
-        Generates spawn and goal tiles near opposite edges, randomly horizontal or vertical.
+        Generates spawn and goal tiles in diagonally opposite corners.
+        (e.g., Top-Left Spawn -> Bottom-Right Goal)
 
         Args:
             offset (int): Minimum distance from the border.
@@ -66,28 +67,28 @@ class Map:
         Returns:
             tuple(Tile, Tile): (spawn_tile, goal_tile)
         """
-        horizontal = random.choice([True, False])
+        # 1. Randomly decide which corner the spawn starts in
+        # True = Low coordinate (Left or Top), False = High coordinate (Right or Bottom)
+        spawn_on_left = random.choice([True, False])
+        spawn_on_top = random.choice([True, False])
 
-        if horizontal:
-            # Randomly pick which side the spawn is on
-            spawn_on_left = random.choice([True, False])
-            spawn_x = random.randint(offset, offset + offset_range) if spawn_on_left else \
-                random.randint(self.width - 1 - offset - offset_range, self.width - 1 - offset)
-            goal_x = random.randint(self.width - 1 - offset - offset_range,
-                                    self.width - 1 - offset) if spawn_on_left else \
-                random.randint(offset, offset + offset_range)
-            # y positions random within bounds
-            spawn_y = goal_y = random.randint(offset, self.height - 1 - offset)
+        # 2. Define Helper to get a random coordinate based on the side (Low or High)
+        def get_coordinate(is_low_side, limit):
+            if is_low_side:
+                # "Low" side (Left or Top)
+                return random.randint(offset, offset + offset_range)
+            else:
+                # "High" side (Right or Bottom)
+                return random.randint(limit - 1 - offset - offset_range, limit - 1 - offset)
 
-        else:  # vertical
-            spawn_on_top = random.choice([True, False])
-            spawn_y = random.randint(offset, offset + offset_range) if spawn_on_top else \
-                random.randint(self.height - 1 - offset - offset_range, self.height - 1 - offset)
-            goal_y = random.randint(self.height - 1 - offset - offset_range,
-                                    self.height - 1 - offset) if spawn_on_top else \
-                random.randint(offset, offset + offset_range)
-            # x positions random within bounds
-            spawn_x = goal_x = random.randint(offset, self.width - 1 - offset)
+        # 3. Calculate Spawn Coordinates
+        spawn_x = get_coordinate(spawn_on_left, self.width)
+        spawn_y = get_coordinate(spawn_on_top, self.height)
+
+        # 4. Calculate Goal Coordinates (MUST be opposite of Spawn)
+        # We pass "not spawn_on_left" to force the opposite side
+        goal_x = get_coordinate(not spawn_on_left, self.width)
+        goal_y = get_coordinate(not spawn_on_top, self.height)
 
         return self.map[spawn_y][spawn_x], self.map[goal_y][goal_x]
 
