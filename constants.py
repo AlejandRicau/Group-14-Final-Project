@@ -15,12 +15,13 @@ ENEMY_REWARD = 15  # Money gained when killing an enemy
 ENEMY_PENALTY = 1  # Lives lost when enemy reaches base
 
 # Colors
-COLOR_EMPTY = arcade.color.STORMCLOUD               # Dark void for empty space
+COLOR_EMPTY = (20, 30, 40, 255)             # Dark void for empty space
 COLOR_TUNNEL_FLOOR = arcade.color.GRAY              # Concrete floor for steam tunnels
-COLOR_TUNNEL_WALL = arcade.color.DARK_SLATE_GRAY    # Dark walls
+COLOR_TUNNEL_WALL = arcade.color.STORMCLOUD   # Dark walls
 COLOR_SPAWN = arcade.color.BLUE
 COLOR_GOAL = arcade.color.RED
-COLOR_BORDER = arcade.color.DARK_BROWN
+COLOR_BORDER = (46, 38, 25, 255)
+COLOR_BACKGROUND = (20, 20, 20, 255)
 
 # Map each tile state to an RGBA color
 TILE_COLORS = {

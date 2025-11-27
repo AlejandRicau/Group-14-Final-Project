@@ -15,7 +15,7 @@ from WaveManager import WaveManager
 class GameView(arcade.Window):
     def __init__(self, width, height, tile_size):
         super().__init__(width * tile_size, height * tile_size, "Map Visualizer")
-        arcade.set_background_color(arcade.color.DARK_CERULEAN)
+        arcade.set_background_color(COLOR_BACKGROUND)
 
         self.tile_size = tile_size
         self.map = Map(width, height)
@@ -24,9 +24,14 @@ class GameView(arcade.Window):
         self.game_manager = GameManager()
         self.wave_manager = WaveManager(self)
 
-        # --- GUI SETUP ---
+        # Tower to place
+        self.selected_tower_type = None
+
+        # --- UI Setup ---
         self.ui_manager = arcade.gui.UIManager()
-        self.ui_manager.enable()  # Vital: tells Arcade to listen for UI events
+        self.ui_manager.enable()
+
+        self.setup_ui()
 
         # Create the variables to hold our labels so we can update them later
         self.money_label = None
@@ -43,6 +48,7 @@ class GameView(arcade.Window):
         self.enemy_list = arcade.SpriteList()
         self.range_display_list = arcade.SpriteList()
         self.bar_list = arcade.SpriteList()
+        self.ghost_list = arcade.SpriteList()
         self.visual_effect_list = []
 
         # Initialize Managers
@@ -65,51 +71,124 @@ class GameView(arcade.Window):
         self.keys_held = set()
 
     def setup_ui(self):
-        """Creates the UI widgets and layout with Icons and a Background."""
+        """Builds the Top Bar and the Collapsible Sidebar."""
+        self.ui_manager.clear()
 
-        # 1. Load Textures for Icons (Using built-in resources for now)
-        # You can replace these strings with paths to your own images
+        # Root Layout covering the whole screen
+        self.root_layout = arcade.gui.UIAnchorLayout()
+        self.ui_manager.add(self.root_layout)
+
+        # ==================================================
+        # 1. TOP BAR (Stats) - Compact Version
+        # ==================================================
+
+        # Load Textures
         icon_money = arcade.load_texture(":resources:images/items/coinGold.png")
         icon_lives = arcade.load_texture(":resources:images/items/gemRed.png")
 
-        def create_stat_group(icon_texture, label_text, text_color):
-            icon_widget = arcade.gui.UIImage(texture=icon_texture, width=32, height=32)
-            label_widget = arcade.gui.UILabel(text=label_text, font_size=20, font_name="Kenney Future",
-                                              text_color=text_color)
-            group = arcade.gui.UIBoxLayout(vertical=False, space_between=10, align="center")
-            group.add(icon_widget)
-            group.add(label_widget)
-            return group, label_widget
+        # Helper: Tighter spacing for compact look
+        def create_stat_group(icon, text, color):
+            # Reduced icon size from 24 to 16
+            img = arcade.gui.UIImage(texture=icon, width=16, height=16)
+            lbl = arcade.gui.UILabel(
+                text=text,
+                font_size=14,  # Slightly smaller font
+                font_name="Kenney Future",
+                text_color=color
+            )
+            # Reduced spacing from 5 to 2
+            box = arcade.gui.UIBoxLayout(vertical=False, space_between=2, align="center")
+            box.add(img)
+            box.add(lbl)
+            return box, lbl
 
-        # 3. Create Money Group
-        money_group, self.money_label = create_stat_group(icon_money, str(self.game_manager.money), arcade.color.GOLD)
+        # Create Groups
+        grp_money, self.money_label = create_stat_group(icon_money, str(self.game_manager.money), arcade.color.GOLD)
+        grp_lives, self.lives_label = create_stat_group(icon_lives, str(self.game_manager.lives), arcade.color.RED)
 
-        # 4. Create Lives Group
-        lives_group, self.lives_label = create_stat_group(icon_lives, str(self.game_manager.lives), arcade.color.RED)
-
-        # --- NEW: WAVE LABEL ---
-        # Simple text label for the wave
         self.wave_label = arcade.gui.UILabel(
             text="Wave: 0",
-            font_size=20,
+            font_size=14,
             font_name="Kenney Future",
             text_color=arcade.color.CYAN
         )
 
-        # 5. Combine Stats
-        stats_box = arcade.gui.UIBoxLayout(vertical=False, space_between=30)
-        stats_box.add(money_group)
-        stats_box.add(lives_group)
-        stats_box.add(self.wave_label)  # <--- Add Wave to layout
+        # Combine into horizontal bar with reduced spacing (15 instead of 30)
+        top_bar_box = arcade.gui.UIBoxLayout(vertical=False, space_between=15)
+        top_bar_box.add(grp_money)
+        top_bar_box.add(grp_lives)
+        top_bar_box.add(self.wave_label)
 
-        # 6. Add Background and Padding
-        stats_container = stats_box.with_padding(top=10, bottom=10, left=20, right=20)
-        stats_container = stats_container.with_background(color=(0, 0, 0, 150))
-        stats_container = stats_container.with_border(width=2, color=arcade.color.WHITE)
+        # Tighter padding (top/bottom 5 instead of 10)
+        top_bar_container = top_bar_box.with_padding(top=5, bottom=5, left=10, right=10)
+        top_bar_container = top_bar_container.with_background(color=(0, 0, 0, 150))
 
-        self.ui_layout = arcade.gui.UIAnchorLayout()
-        self.ui_layout.add(child=stats_container, anchor_x="left", anchor_y="bottom", align_x=20, align_y=20)
-        self.ui_manager.add(self.ui_layout)
+        # Add border
+        top_bar_container = top_bar_container.with_border(width=2, color=arcade.color.DARK_GRAY)
+
+        # Anchor to Top Center
+        self.root_layout.add(top_bar_container, anchor_x="center", anchor_y="top")
+
+        # ==================================================
+        # 2. COLLAPSIBLE SIDEBAR (Tower Selection)
+        # ==================================================
+
+        # A. The Tower Selection Panel (Hidden by default)
+        self.tower_box = arcade.gui.UIBoxLayout(vertical=True, space_between=10)
+
+        def create_tower_btn(tower_type, label, cost):
+            # Using FlatButton for the list items
+            btn = arcade.gui.UIFlatButton(text=f"{label} (${cost})", width=120, height=40)
+
+            @btn.event("on_click")
+            def on_click_tower(event):
+                self.selected_tower_type = tower_type
+
+                # --- NEW: Create the Ghost Sprite immediately ---
+                # This ensures we don't have to load textures in on_draw
+                self.create_ghost_tower(tower_type)
+
+            return btn
+
+        self.tower_box.add(create_tower_btn("base", "Base", TOWER_COST))
+        self.tower_box.add(create_tower_btn("AOE", "AOE", TOWER_COST))
+        self.tower_box.add(create_tower_btn("laser", "Laser", TOWER_COST))
+
+        # Background for the panel
+        self.tower_panel = self.tower_box.with_padding(all=10)
+        self.tower_panel = self.tower_panel.with_background(color=(0, 0, 0, 180))
+
+        # B. The Hammer Button (Texture Button)
+        # We load a hammer texture (using a built-in key texture as a placeholder if hammer isn't available,
+        # or you can use :resources:images/items/hammer.png if available, but let's use a generic tool icon)
+
+        # NOTE: Arcade resources doesn't have a "Hammer" icon specifically in the default set.
+        # We will use 'wrench.png' from items, or you can providing your own path.
+        # Let's use the 'wrench' as the build tool for now.
+        hammer_texture = generate_build_icon()
+
+        # Create a Texture Button
+        toggle_btn = arcade.gui.UITextureButton(
+            texture=hammer_texture,
+            width=64, height=64  # Made slightly bigger for touch target
+        )
+
+        @toggle_btn.event("on_click")
+        def on_toggle_click(event):
+            if self.tower_panel in self.root_layout.children:
+                self.root_layout.remove(self.tower_panel)
+            else:
+                # Add panel ABOVE the button (since button is at bottom)
+                self.root_layout.add(
+                    self.tower_panel,
+                    anchor_x="right",
+                    anchor_y="bottom",
+                    align_y=70,  # Push it up above the hammer
+                    align_x=-20
+                )
+
+        # Anchor Button to Bottom Right
+        self.root_layout.add(toggle_btn, anchor_x="right", anchor_y="bottom", align_x=-20, align_y=20)
 
     def update_ui_values(self):
         """Updates the text of the labels."""
@@ -144,13 +223,38 @@ class GameView(arcade.Window):
         for vis in self.visual_effect_list:
             vis.draw()
 
-        # Draw hitboxes
-        # for enemy in self.enemy_list:
-        #     enemy.draw_hit_box()
 
-        # 2. Draw UI
-        # The UIManager handles the camera/viewport automatically!
+
+        # --- NEW: Draw "Ghost" cursor if building ---
+        if self.selected_tower_type and len(self.ghost_list) > 0:
+            # Update Position
+            wx, wy, _ = self.camera.unproject((self._mouse_x, self._mouse_y))
+            self.ghost_sprite.position = (wx, wy)
+
+            # Draw the LIST
+            self.ghost_list.draw()
+
+            # 2. Draw UI
         self.ui_manager.draw()
+
+    def create_ghost_tower(self, tower_type):
+        """Creates a semi-transparent sprite for placement preview."""
+
+        # 1. Clear any old ghosts
+        self.ghost_list.clear()
+
+        # 2. Get Texture
+        if tower_type in TOWER_TEXTURES:
+            tex = TOWER_TEXTURES[tower_type]
+        else:
+            tex = TOWER_TEXTURES.get("base")
+
+        # 3. Create Sprite (Pass texture as first arg!)
+        self.ghost_sprite = arcade.Sprite(tex)
+        self.ghost_sprite.alpha = 128
+
+        # 4. Add to the list
+        self.ghost_list.append(self.ghost_sprite)
 
     def on_update(self, delta_time: float):
         # Update all enemies
@@ -178,39 +282,51 @@ class GameView(arcade.Window):
         self.handle_camera_movement()
 
     def on_mouse_press(self, x, y, button, modifiers):
-        """
-        Functional response of mouse press
+        """Handles tower placement based on selected state."""
 
-        Args:
-            x (int): x position of mouse
-            y (int): y position of mouse
-            button (int): button pressed
-            modifiers (int): modifiers pressed
-        """
+        # 1. If we clicked the UI, do NOT place a tower on the map
+        # Arcade's UIManager doesn't strictly block clicks, but we can check logic
+        # Ideally, we rely on the fact that the map is behind the UI.
 
-        # convert mouse pos to world pos
-        world_point = self.camera.unproject((x, y))
-        world_x, world_y, _ = world_point  # `unproject` returns a Vec3
+        # 2. Check if we have a tower selected
+        if self.selected_tower_type is None:
+            return
 
-        # get the tile on the position
-        clicked_tile = arcade.get_sprites_at_point(
-            (world_x, world_y),
-            self.background_list
-        )[0]
-
-        # mouse left click
         if button == arcade.MOUSE_BUTTON_LEFT:
-            if arcade.key.KEY_1 in self.keys_held:
-                # Try to place a tower
-                self.try_place_tower(clicked_tile, t_type="base")
+            # convert mouse pos to world pos
+            world_point = self.camera.unproject((x, y))
+            world_x, world_y, _ = world_point
 
-            elif arcade.key.KEY_2 in self.keys_held:
-                # Try to place an AOE tower
-                self.try_place_tower(clicked_tile, t_type="AOE")
+            # Get sprites at point
+            sprites = arcade.get_sprites_at_point((world_x, world_y), self.background_list)
 
-            elif arcade.key.KEY_3 in self.keys_held:
-                # Try to place a Laser tower
-                self.try_place_tower(clicked_tile, t_type="laser")
+            if sprites:
+                clicked_tile = sprites[0]
+                success = self.try_place_tower(clicked_tile, self.selected_tower_type)
+
+                if success:
+                    self.selected_tower_type = None
+
+                    # --- NEW: Clear the list ---
+                    self.ghost_list.clear()
+
+    def try_place_tower(self, tile, t_type="base"):
+        """Returns True if successful, False otherwise."""
+        if tile.tower:
+            print("Space occupied!")
+            return False
+
+        if not self.game_manager.can_afford(TOWER_COST):  # You might want different costs per type later
+            print("Not enough money!")
+            return False
+
+        if not tile.is_valid_tower_location(self.map):
+            print("Invalid location!")
+            return False
+
+        self.add_tower(tile, t_type)
+        self.game_manager.spend_money(TOWER_COST)
+        return True
 
     def on_key_press(self, symbol, modifiers):
         self.keys_held.add(symbol)
@@ -236,33 +352,6 @@ class GameView(arcade.Window):
             x, y = self.camera.position
             self.camera.position = (x + dx, y + dy)
 
-    def try_place_tower(self, tile, t_type="base"):
-        """
-        Tries to place a tower at the given tile.
-
-        Args:
-            tile (Tile): The tile to place the tower on.
-            t_type (str): The type of tower to place.
-        """
-        if tile.tower:
-            # If tower already exists, toggle range display
-            tile.tower.toggle_range_display()
-            return
-
-        if not self.game_manager.can_afford(TOWER_COST):
-            # check for affordability
-            print("Not enough money!")
-            return
-
-        if not tile.is_valid_tower_location(self.map):
-            # check for validity
-            print("Invalid location for a tower, has to be next to path!")
-            return
-
-        # add tower and spend money
-        self.add_tower(tile, t_type)
-        self.game_manager.spend_money(TOWER_COST)
-        print(f"Tower placed! Remaining Money: {self.game_manager.money}")
 
     def spawn_enemy_at_tile(self, start_tile, speed=30):
         """
