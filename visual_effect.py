@@ -2,6 +2,70 @@ from constants import *
 from random import uniform
 import arcade
 import math
+# visual_effect.py imports
+from arcade.experimental.shadertoy import Shadertoy
+
+
+class GlowShader:
+    def __init__(self, window_size):
+        # Load the shader file we just created
+        self.shader = Shadertoy.create_from_file(window_size, "projectile_glow.glsl")
+        self.window_size = window_size
+
+    # Update arguments to accept 'camera'
+    def render(self, projectile_list, camera, color=(1.0, 0.8, 0.2), shape=0):
+        if not projectile_list:
+            return
+
+        window = arcade.get_window()
+        width, height = window.get_size()
+        fb_width, fb_height = window.get_framebuffer_size()
+        pixel_ratio = fb_width / width
+
+        flat_data = []
+        for p in projectile_list:
+            # 1. Get World Position
+            if hasattr(p, 'current_x'):
+                wx, wy = p.current_x, p.current_y
+            elif hasattr(p, 'center_x'):
+                wx, wy = p.center_x, p.center_y
+            else:
+                continue
+
+            # 2. Project to Screen
+            screen_pos = camera.project((wx, wy))
+            if screen_pos is None: continue
+
+            # 3. Scale to Physical Pixels
+            px = screen_pos[0] * pixel_ratio
+            py = screen_pos[1] * pixel_ratio
+
+            flat_data.append(float(px))
+            flat_data.append(float(py))
+
+        if not flat_data:
+            return
+
+        # Padding logic (same as before)
+        count = len(flat_data) // 2
+        MAX_POINTS = 100
+        REQUIRED_FLOATS = MAX_POINTS * 2
+
+        if len(flat_data) > REQUIRED_FLOATS:
+            flat_data = flat_data[:REQUIRED_FLOATS]
+            count = MAX_POINTS
+        elif len(flat_data) < REQUIRED_FLOATS:
+            flat_data.extend([0.0] * (REQUIRED_FLOATS - len(flat_data)))
+
+        # 4. Send to Shader
+        try:
+            self.shader.program['u_point_count'] = count
+            self.shader.program['u_points'] = flat_data
+            self.shader.program['u_color'] = color
+            self.shader.program['u_shape'] = shape  # <--- Send the shape!
+            self.shader.render()
+        except Exception as e:
+            print(f"Shader Render Error: {e}")
 
 class LaserEffect:
     def __init__(self, start_x, start_y, end_x, end_y):

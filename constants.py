@@ -190,3 +190,7 @@ SHOULD_ADD_SPAWN = lambda wave: (wave % 4 == 0)
 # 6. When should we add a NEW GOAL point?
 # Example: Adds a goal every 6 waves
 SHOULD_ADD_GOAL = lambda wave: (wave % 6 == 0)
+
+# Base Enemy Constants
+BASE_ENEMY_SPEED = 30
+BASE_ENEMY_HEALTH = 100

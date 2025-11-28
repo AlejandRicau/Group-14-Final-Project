@@ -10,6 +10,7 @@ import random
 import math
 from GameManager import GameManager
 from WaveManager import WaveManager
+from visual_effect import *
 
 
 class GameView(arcade.Window):
@@ -53,6 +54,9 @@ class GameView(arcade.Window):
 
         # Initialize Managers
         self.game_manager = GameManager()
+
+        # Initialize Shaders
+        self.glow_shader = GlowShader(self.get_size())
 
         # GUI Camera
         # We use a second camera for the UI so it stays static
@@ -211,7 +215,7 @@ class GameView(arcade.Window):
     def on_draw(self):
         self.clear()
 
-        # 1. Draw World
+        # 1. Draw World (Standard Layers)
         self.camera.use()
         self.background_list.draw()
         self.tower_list.draw()
@@ -223,22 +227,45 @@ class GameView(arcade.Window):
         for tower in self.tower_list:
             tower.cooldown_effect.draw()
 
-        # Draw visual effects
+        # 2. Draw Shader Glows (Additive Blending)
+        bullets = [x for x in self.visual_effect_list if isinstance(x, Bullet)]
+        steam = [x for x in self.visual_effect_list if isinstance(x, SteamBoom)]
+
+        # --- FIX: Correct Blend Function ---
+        # Enable blending
+        self.ctx.enable(self.ctx.BLEND)
+
+        # Set to ADDITIVE (Source Alpha, One)
+        # This makes the pixels add up to become brighter
+        self.ctx.blend_func = self.ctx.SRC_ALPHA, self.ctx.ONE
+
+        # Render Bullet Glow (Golden/White)
+        if bullets:
+            self.glow_shader.render(bullets, self.camera, color=(1.0, 0.9, 0.5), shape=0)
+
+            # Render Steam/AOE Glow (Circle)
+        if steam:
+            self.glow_shader.render(steam, self.camera, color=(0.2, 0.6, 1.0), shape=0)
+
+            # Render Goal Glow (Square)
+        if self.map.goals:
+            self.glow_shader.render(self.map.goals, self.camera, color=(1.0, 0.1, 0.1), shape=1)
+
+        # --- FIX: Reset to Default Blending ---
+        # Standard Alpha Blending (Source Alpha, 1 - Source Alpha)
+        self.ctx.blend_func = self.ctx.SRC_ALPHA, self.ctx.ONE_MINUS_SRC_ALPHA
+
+        # 3. Draw Actual Projectile Sprites (Normal Blending)
         for vis in self.visual_effect_list:
             vis.draw()
 
-
-
-        # --- NEW: Draw "Ghost" cursor if building ---
+        # 4. Draw Ghost Cursor
         if self.selected_tower_type and len(self.ghost_list) > 0:
-            # Update Position
             wx, wy, _ = self.camera.unproject((self._mouse_x, self._mouse_y))
-            self.ghost_sprite.position = (wx, wy)
-
-            # Draw the LIST
+            self.ghost_list[0].position = (wx, wy)
             self.ghost_list.draw()
 
-            # 2. Draw UI
+        # 5. Draw UI
         self.ui_manager.draw()
 
     def create_ghost_tower(self, tower_type):
