@@ -213,6 +213,51 @@ class SteamPuff:
 
 
 
+class CooldownEffect:
+    def __init__(self, tower):
+        """
+        Visual overlay showing tower cooldown.
+
+        Args:
+            tower: the tower this overlay belongs to
+        """
+        self.tower = tower
+        self.max_alpha = COOLDOWN_OPACITY_LIMIT
+        self.alpha = 0
+
+    def update(self):
+        """
+        Update overlay alpha based on tower cooldown.
+        """
+        # cooldown goes from full -> 0
+        full_cd = 1.0 / self.tower.frequency
+        cd = self.tower.cooldown
+
+        if cd > 0:
+            ratio = cd / full_cd       # 1 → 0
+            self.alpha = int(self.max_alpha * ratio)
+        else:
+            self.alpha = 0
+
+    def draw(self):
+        """
+        Draw overlay above the tower.
+        """
+        if self.alpha <= 0:
+            return
+
+        # Draw a thick vertical line as cooldown overlay
+        arcade.draw_line(
+            self.tower.center_x,  # start_x
+            self.tower.center_y - TOWER_SIZE[1] / 2,  # start_y (bottom of tower)
+            self.tower.center_x,  # end_x
+            self.tower.center_y + TOWER_SIZE[1] / 2,  # end_y (top of tower)
+            (0, 0, 0, self.alpha),  # color with alpha
+            line_width=TOWER_SIZE[0]  # make the line as wide as the tower
+        )
+
+
+
 def draw_line_with_gradient(
         start_x, start_y, end_x, end_y,
         color, width, step):

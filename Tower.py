@@ -28,6 +28,9 @@ class Tower(arcade.Sprite):
         self.center_x = tile.center_x
         self.center_y = tile.center_y
 
+        # initialize the tower's cooldown display
+        self.cooldown_effect = CooldownEffect(self)
+
     def update(self, *args, **kwargs):
         """
         Updates the tower's internal logic
@@ -35,6 +38,7 @@ class Tower(arcade.Sprite):
         self.update_position_for_map_expansion()
         self.update_display_texture()
         self.update_target_dot()
+        self.cooldown_effect.update()
 
     def update_position_for_map_expansion(self):
         """

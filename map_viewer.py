@@ -39,7 +39,7 @@ class MapViewer(arcade.Window):
         self.enemy_list = arcade.SpriteList()
         self.range_display_list = arcade.SpriteList()
         self.bar_list = arcade.SpriteList()
-        self.visual_effect_list = []
+        self.cooldown_display_list = []
 
         # Initialize Managers
         self.game_manager = GameManager()
@@ -153,6 +153,10 @@ class MapViewer(arcade.Window):
         self.bar_list.draw()
         self.range_display_list.draw()
 
+        # Draw cooldown displays
+        for tower in self.tower_list:
+            tower.cooldown_effect.draw()
+
         # Draw visual effects
         for vis in self.visual_effect_list:
             vis.draw()
@@ -188,6 +192,9 @@ class MapViewer(arcade.Window):
 
         # Handle camera movement
         self.handle_camera_movement()
+
+        # debug here:
+        # print("cooldown display list:", self.cooldown_display_list)
 
     def on_mouse_press(self, x, y, button, modifiers):
         """

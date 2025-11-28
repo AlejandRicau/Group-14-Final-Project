@@ -219,6 +219,10 @@ class GameView(arcade.Window):
         self.bar_list.draw()
         self.range_display_list.draw()
 
+        # Draw cooldown displays
+        for tower in self.tower_list:
+            tower.cooldown_effect.draw()
+
         # Draw visual effects
         for vis in self.visual_effect_list:
             vis.draw()
