@@ -286,50 +286,64 @@ class GameView(arcade.Window):
         self.handle_camera_movement()
 
     def on_mouse_press(self, x, y, button, modifiers):
-        """Handles tower placement based on selected state."""
+        """Handles tower placement OR selection."""
 
-        # 1. If we clicked the UI, do NOT place a tower on the map
-        # Arcade's UIManager doesn't strictly block clicks, but we can check logic
-        # Ideally, we rely on the fact that the map is behind the UI.
-
-        # 2. Check if we have a tower selected
-        if self.selected_tower_type is None:
-            return
+        # 1. Check if we clicked the UI (Arcade's UIManager usually handles this first)
+        # But we double check to ensure we don't click through buttons.
+        # (This step is often implicit if buttons consume the event, but good practice)
 
         if button == arcade.MOUSE_BUTTON_LEFT:
-            # convert mouse pos to world pos
+            # Convert mouse pos to world pos
             world_point = self.camera.unproject((x, y))
             world_x, world_y, _ = world_point
 
             # Get sprites at point
             sprites = arcade.get_sprites_at_point((world_x, world_y), self.background_list)
 
-            if sprites:
-                clicked_tile = sprites[0]
-                success = self.try_place_tower(clicked_tile, self.selected_tower_type)
+            if not sprites:
+                return
 
+            clicked_tile = sprites[0]
+
+            # --- LOGIC BRANCH ---
+
+            # CASE A: BUILDING MODE (We have a blueprint selected)
+            if self.selected_tower_type is not None:
+                # Attempt to Place
+                success = self.try_place_tower(clicked_tile, self.selected_tower_type)
                 if success:
                     self.selected_tower_type = None
-
-                    # --- NEW: Clear the list ---
                     self.ghost_list.clear()
 
+            # CASE B: SELECTION MODE (No blueprint)
+            else:
+                # If we clicked a tile that HAS a tower, toggle its range
+                if clicked_tile.tower:
+                    clicked_tile.tower.toggle_range_display()
+                    print(f"Toggled range for tower at {clicked_tile.grid_pos}")
+
     def try_place_tower(self, tile, t_type="base"):
-        """Returns True if successful, False otherwise."""
+        """Returns True if placement successful, False otherwise."""
+
+        # 1. Check if occupied
         if tile.tower:
             print("Space occupied!")
             return False
 
-        if not self.game_manager.can_afford(TOWER_COST):  # You might want different costs per type later
+        # 2. Check Affordability
+        if not self.game_manager.can_afford(TOWER_COST):
             print("Not enough money!")
             return False
 
+        # 3. Check Validity (Must be near path)
         if not tile.is_valid_tower_location(self.map):
             print("Invalid location!")
             return False
 
+        # 4. Success!
         self.add_tower(tile, t_type)
         self.game_manager.spend_money(TOWER_COST)
+        print(f"Tower placed! Remaining Money: {self.game_manager.money}")
         return True
 
     def on_key_press(self, symbol, modifiers):
