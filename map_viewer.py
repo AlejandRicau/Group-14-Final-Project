@@ -39,7 +39,7 @@ class MapViewer(arcade.Window):
         self.enemy_list = arcade.SpriteList()
         self.range_display_list = arcade.SpriteList()
         self.bar_list = arcade.SpriteList()
-        self.cooldown_display_list = []
+        self.visual_effect_list = []
 
         # Initialize Managers
         self.game_manager = GameManager()
