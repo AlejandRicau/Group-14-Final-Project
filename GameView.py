@@ -56,7 +56,9 @@ class GameView(arcade.Window):
         self.game_manager = GameManager()
 
         # Initialize Shaders
-        self.glow_shader = GlowShader(self.get_size())
+        self.orb_shader = OrbShader(self.get_size())  # For AOE/Goal
+        self.beam_shader = BeamShader(self.get_size())  # For Bullets
+        self.steam_shader = SteamShader(self.get_size())  # For Clouds
 
         # GUI Camera
         # We use a second camera for the UI so it stays static
@@ -215,7 +217,9 @@ class GameView(arcade.Window):
     def on_draw(self):
         self.clear()
 
-        # 1. Draw World (Standard Layers)
+        self.clear()
+
+        # 1. Draw World
         self.camera.use()
         self.background_list.draw()
         self.tower_list.draw()
@@ -223,49 +227,51 @@ class GameView(arcade.Window):
         self.bar_list.draw()
         self.range_display_list.draw()
 
-        # Draw cooldown displays
         for tower in self.tower_list:
             tower.cooldown_effect.draw()
 
-        # 2. Draw Shader Glows (Additive Blending)
+        # Prepare Lists
         bullets = [x for x in self.visual_effect_list if isinstance(x, Bullet)]
-        steam = [x for x in self.visual_effect_list if isinstance(x, SteamBoom)]
+        steam_booms = [x for x in self.visual_effect_list if isinstance(x, SteamBoom)]
+        puffs = [x for x in self.visual_effect_list if isinstance(x, SteamPuff)]
 
-        # --- FIX: Correct Blend Function ---
-        # Enable blending
+        # --- PASS 1: STEAM (Standard Blend) ---
         self.ctx.enable(self.ctx.BLEND)
+        self.ctx.blend_func = self.ctx.SRC_ALPHA, self.ctx.ONE_MINUS_SRC_ALPHA
+        if puffs:
+            self.steam_shader.render(puffs, self.camera)
 
-        # Set to ADDITIVE (Source Alpha, One)
-        # This makes the pixels add up to become brighter
+        # --- PASS 2: GLOWS (Additive Blend) ---
         self.ctx.blend_func = self.ctx.SRC_ALPHA, self.ctx.ONE
 
-        # Render Bullet Glow (Golden/White)
+        # A. Bullets (Beam)
         if bullets:
-            self.glow_shader.render(bullets, self.camera, color=(1.0, 0.9, 0.5), shape=0)
+            # Lowered values from ~1.0 to ~0.6 to reduce blinding whiteness
+            self.beam_shader.render(bullets, self.camera, color=(0.6, 0.7, 0.8))
 
-            # Render Steam/AOE Glow (Circle)
-        if steam:
-            self.glow_shader.render(steam, self.camera, color=(0.2, 0.6, 1.0), shape=0)
+        # B. AOE Orbs (Point)
+        if steam_booms:
+            # Lowered brightness
+            self.orb_shader.render(steam_booms, self.camera, color=(0.4, 0.6, 0.8))
 
-            # Render Goal Glow (Square)
+        # C. Goals (Point)
         if self.map.goals:
-            self.glow_shader.render(self.map.goals, self.camera, color=(1.0, 0.1, 0.1), shape=1)
+            # Red is naturally darker, so we can keep it slightly higher
+            self.orb_shader.render(self.map.goals, self.camera, color=(0.8, 0.1, 0.1))
 
-        # --- FIX: Reset to Default Blending ---
-        # Standard Alpha Blending (Source Alpha, 1 - Source Alpha)
+        # --- RESET BLEND ---
         self.ctx.blend_func = self.ctx.SRC_ALPHA, self.ctx.ONE_MINUS_SRC_ALPHA
 
-        # 3. Draw Actual Projectile Sprites (Normal Blending)
+        # 3. Draw Actual Sprites
         for vis in self.visual_effect_list:
             vis.draw()
 
-        # 4. Draw Ghost Cursor
+        # ... (Draw Ghost & UI) ...
         if self.selected_tower_type and len(self.ghost_list) > 0:
             wx, wy, _ = self.camera.unproject((self._mouse_x, self._mouse_y))
             self.ghost_list[0].position = (wx, wy)
             self.ghost_list.draw()
 
-        # 5. Draw UI
         self.ui_manager.draw()
 
     def create_ghost_tower(self, tower_type):

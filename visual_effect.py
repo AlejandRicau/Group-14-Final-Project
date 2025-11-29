@@ -2,29 +2,24 @@ from constants import *
 from random import uniform
 import arcade
 import math
-# visual_effect.py imports
 from arcade.experimental.shadertoy import Shadertoy
 
 
-class GlowShader:
-    def __init__(self, window_size):
-        # Load the shader file we just created
-        self.shader = Shadertoy.create_from_file(window_size, "projectile_glow.glsl")
-        self.window_size = window_size
+class OrbShader:
+    """Handles glowing circles (AOE, Goals)"""
 
-    # Update arguments to accept 'camera'
-    def render(self, projectile_list, camera, color=(1.0, 0.8, 0.2), shape=0):
-        if not projectile_list:
-            return
+    def __init__(self, window_size):
+        self.shader = Shadertoy.create_from_file(window_size, "glow_point.glsl")
+
+    def render(self, object_list, camera, color=(1.0, 0.1, 0.1)):
+        if not object_list: return
 
         window = arcade.get_window()
-        width, height = window.get_size()
-        fb_width, fb_height = window.get_framebuffer_size()
-        pixel_ratio = fb_width / width
+        pixel_ratio = window.get_pixel_ratio()
 
         flat_data = []
-        for p in projectile_list:
-            # 1. Get World Position
+        for p in object_list:
+            # --- FIX: Handle different position attributes ---
             if hasattr(p, 'current_x'):
                 wx, wy = p.current_x, p.current_y
             elif hasattr(p, 'center_x'):
@@ -32,40 +27,130 @@ class GlowShader:
             else:
                 continue
 
-            # 2. Project to Screen
-            screen_pos = camera.project((wx, wy))
-            if screen_pos is None: continue
+            pos = camera.project((wx, wy))
+            if not pos: continue
 
-            # 3. Scale to Physical Pixels
+            flat_data.append(pos[0] * pixel_ratio)
+            flat_data.append(pos[1] * pixel_ratio)
+
+        if not flat_data: return
+
+        # Pad to 100 points
+        count = len(flat_data) // 2
+        if count > 100:
+            flat_data = flat_data[:200]
+            count = 100
+        else:
+            flat_data.extend([0.0] * (200 - len(flat_data)))
+
+        self.shader.program['u_point_count'] = count
+        self.shader.program['u_points'] = flat_data
+        self.shader.program['u_color'] = color
+        self.shader.render()
+
+
+class BeamShader:
+    """Handles glowing lines (Bullets)"""
+
+    def __init__(self, window_size):
+        self.shader = Shadertoy.create_from_file(window_size, "glow_beam.glsl")
+
+    def render(self, bullet_list, camera, color=(1.0, 0.9, 0.5)):
+        if not bullet_list: return
+
+        window = arcade.get_window()
+        pixel_ratio = window.get_pixel_ratio()
+
+        flat_data = []
+
+        for b in bullet_list:
+            if not isinstance(b, Bullet): continue
+
+            head_world = (b.current_x, b.current_y)
+
+            # --- FIX: Shorten the beam ---
+            # Was * 4, now * 1.5 for a tighter steam jet look
+            beam_len = b.trail_length * 1.5
+            tail_world_x = b.current_x - (b.dir_x * beam_len)
+            tail_world_y = b.current_y - (b.dir_y * beam_len)
+
+            head_screen = camera.project(head_world)
+            tail_screen = camera.project((tail_world_x, tail_world_y))
+
+            if not head_screen or not tail_screen: continue
+
+            flat_data.append(head_screen[0] * pixel_ratio)
+            flat_data.append(head_screen[1] * pixel_ratio)
+            flat_data.append(tail_screen[0] * pixel_ratio)
+            flat_data.append(tail_screen[1] * pixel_ratio)
+
+        if not flat_data: return
+
+        count = len(flat_data) // 4
+        if count > 100:
+            flat_data = flat_data[:400]
+            count = 100
+        else:
+            flat_data.extend([0.0] * (400 - len(flat_data)))
+
+        self.shader.program['u_line_count'] = count
+        self.shader.program['u_lines'] = flat_data
+        self.shader.program['u_color'] = color
+        self.shader.render()
+
+
+class SteamShader:
+    def __init__(self, window_size):
+        self.shader = Shadertoy.create_from_file(window_size, "steam.glsl")
+
+    def render(self, puff_list, camera):
+        if not puff_list: return
+
+        window = arcade.get_window()
+        width, height = window.get_size()
+        fb_width, fb_height = window.get_framebuffer_size()
+        pixel_ratio = fb_width / width
+
+        # Flat list of 3 floats per puff: [x, y, radius]
+        flat_data = []
+
+        for p in puff_list:
+            if not isinstance(p, SteamPuff): continue
+
+            # Project Position
+            screen_pos = camera.project((p.x, p.y))
+            if not screen_pos: continue
+
             px = screen_pos[0] * pixel_ratio
             py = screen_pos[1] * pixel_ratio
 
+            # Scale Radius based on pixel ratio
+            pr = p.size * pixel_ratio
+
             flat_data.append(float(px))
             flat_data.append(float(py))
+            flat_data.append(float(pr))
 
-        if not flat_data:
-            return
+        if not flat_data: return
 
-        # Padding logic (same as before)
-        count = len(flat_data) // 2
-        MAX_POINTS = 100
-        REQUIRED_FLOATS = MAX_POINTS * 2
+        # 100 Puffs * 3 floats = 300 floats total
+        MAX_PUFFS = 100
+        REQUIRED_FLOATS = MAX_PUFFS * 3
+        count = len(flat_data) // 3
 
         if len(flat_data) > REQUIRED_FLOATS:
             flat_data = flat_data[:REQUIRED_FLOATS]
-            count = MAX_POINTS
+            count = MAX_PUFFS
         elif len(flat_data) < REQUIRED_FLOATS:
             flat_data.extend([0.0] * (REQUIRED_FLOATS - len(flat_data)))
 
-        # 4. Send to Shader
         try:
-            self.shader.program['u_point_count'] = count
-            self.shader.program['u_points'] = flat_data
-            self.shader.program['u_color'] = color
-            self.shader.program['u_shape'] = shape  # <--- Send the shape!
+            self.shader.program['u_puff_count'] = count
+            self.shader.program['u_puffs'] = flat_data
             self.shader.render()
         except Exception as e:
-            print(f"Shader Render Error: {e}")
+            print(f"Steam Error: {e}")
+
 
 class LaserEffect:
     def __init__(self, start_x, start_y, end_x, end_y):
