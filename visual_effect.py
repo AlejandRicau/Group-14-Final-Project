@@ -50,7 +50,7 @@ class OrbShader:
 
 
 class BeamShader:
-    """Handles glowing lines (Bullets)"""
+    """Handles SOLID glowing lines (Bullets)"""
 
     def __init__(self, window_size):
         self.shader = Shadertoy.create_from_file(window_size, "glow_beam.glsl")
@@ -62,14 +62,11 @@ class BeamShader:
         pixel_ratio = window.get_pixel_ratio()
 
         flat_data = []
-
         for b in bullet_list:
             if not isinstance(b, Bullet): continue
 
+            # --- Bullet Logic (World -> Screen) ---
             head_world = (b.current_x, b.current_y)
-
-            # --- FIX: Shorten the beam ---
-            # Was * 4, now * 1.5 for a tighter steam jet look
             beam_len = b.trail_length * 1.5
             tail_world_x = b.current_x - (b.dir_x * beam_len)
             tail_world_y = b.current_y - (b.dir_y * beam_len)
@@ -85,7 +82,55 @@ class BeamShader:
             flat_data.append(tail_screen[1] * pixel_ratio)
 
         if not flat_data: return
+        self._send_to_gpu(flat_data, color)
 
+    def _send_to_gpu(self, flat_data, color):
+        # Helper to avoid code duplication
+        count = len(flat_data) // 4
+        if count > 100:
+            flat_data = flat_data[:400]
+            count = 100
+        else:
+            flat_data.extend([0.0] * (400 - len(flat_data)))
+
+        self.shader.program['u_line_count'] = count
+        self.shader.program['u_lines'] = flat_data
+        self.shader.program['u_color'] = color
+        self.shader.render()
+
+
+class LaserShader:
+    """Handles GRADIENT glowing lines (Lasers)"""
+
+    def __init__(self, window_size):
+        # Load the GRADIENT shader
+        self.shader = Shadertoy.create_from_file(window_size, "glow_laser.glsl")
+
+    def render(self, laser_list, camera, color=(0.4, 1.0, 0.6)):
+        if not laser_list: return
+
+        window = arcade.get_window()
+        pixel_ratio = window.get_pixel_ratio()
+
+        flat_data = []
+        for l in laser_list:
+            if not isinstance(l, LaserEffect): continue
+
+            # --- Laser Logic (Explicit Start/End) ---
+            # IMPORTANT: For gradient to work, Start must be Tower, End must be Target
+            start_screen = camera.project((l.start_x, l.start_y))
+            end_screen = camera.project((l.end_x, l.end_y))
+
+            if not start_screen or not end_screen: continue
+
+            flat_data.append(start_screen[0] * pixel_ratio)
+            flat_data.append(start_screen[1] * pixel_ratio)
+            flat_data.append(end_screen[0] * pixel_ratio)
+            flat_data.append(end_screen[1] * pixel_ratio)
+
+        if not flat_data: return
+
+        # Reuse same padding logic
         count = len(flat_data) // 4
         if count > 100:
             flat_data = flat_data[:400]

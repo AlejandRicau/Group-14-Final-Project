@@ -1,4 +1,6 @@
 // glow_beam.glsl
+// Used for: Base Tower Bullets (Solid Steam Jet)
+
 uniform vec4 u_lines[100];
 uniform int u_line_count;
 uniform vec3 u_color;
@@ -19,12 +21,12 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
 
         float d = distanceToLineSegment(start, end, fragCoord.xy);
 
-        // --- TUNING FOR WIDER, SOFT BEAM ---
-        // Numerator 5.0 / Denom + 5.0 gives a wider core than 3.0/4.0
+        // --- SOLID STEAM LOOK ---
+        // 5.0 / (d + 5.0) gives a nice thick core
         float intensity = 5.0 / (d + 5.0);
 
-        // Exponent 1.8 (was 2.0) makes the "halo" larger/softer
-        intensity = pow(intensity, 1.8);
+        // Power 2.0 makes the edge soft but defined
+        intensity = pow(intensity, 2.0);
 
         finalColor += u_color * intensity;
     }

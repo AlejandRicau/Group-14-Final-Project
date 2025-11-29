@@ -56,9 +56,10 @@ class GameView(arcade.Window):
         self.game_manager = GameManager()
 
         # Initialize Shaders
-        self.orb_shader = OrbShader(self.get_size())  # For AOE/Goal
-        self.beam_shader = BeamShader(self.get_size())  # For Bullets
-        self.steam_shader = SteamShader(self.get_size())  # For Clouds
+        self.orb_shader = OrbShader(self.get_size())
+        self.beam_shader = BeamShader(self.get_size())  # Solid (Bullets)
+        self.laser_shader = LaserShader(self.get_size())  # Gradient (Lasers) <--- NEW
+        self.steam_shader = SteamShader(self.get_size())
 
         # GUI Camera
         # We use a second camera for the UI so it stays static
@@ -234,6 +235,7 @@ class GameView(arcade.Window):
         bullets = [x for x in self.visual_effect_list if isinstance(x, Bullet)]
         steam_booms = [x for x in self.visual_effect_list if isinstance(x, SteamBoom)]
         puffs = [x for x in self.visual_effect_list if isinstance(x, SteamPuff)]
+        lasers = [x for x in self.visual_effect_list if isinstance(x, LaserEffect)]
 
         # --- PASS 1: STEAM (Standard Blend) ---
         self.ctx.enable(self.ctx.BLEND)
@@ -244,20 +246,19 @@ class GameView(arcade.Window):
         # --- PASS 2: GLOWS (Additive Blend) ---
         self.ctx.blend_func = self.ctx.SRC_ALPHA, self.ctx.ONE
 
-        # A. Bullets (Beam)
+        # A. Bullets (White/Cyan Solid Beam)
         if bullets:
-            # Lowered values from ~1.0 to ~0.6 to reduce blinding whiteness
-            self.beam_shader.render(bullets, self.camera, color=(0.6, 0.7, 0.8))
+            self.beam_shader.render(bullets, self.camera, color=(0.9, 0.95, 1.0))
 
-        # B. AOE Orbs (Point)
+        # B. Lasers (Green Gradient Beam)
+        if lasers:
+            self.laser_shader.render(lasers, self.camera, color=(0.8, 0.9, 1.0))
+
+        # C. Orbs (AOE + Goals)
         if steam_booms:
-            # Lowered brightness
-            self.orb_shader.render(steam_booms, self.camera, color=(0.4, 0.6, 0.8))
-
-        # C. Goals (Point)
+            self.orb_shader.render(steam_booms, self.camera, color=(0.6, 0.85, 1.0))
         if self.map.goals:
-            # Red is naturally darker, so we can keep it slightly higher
-            self.orb_shader.render(self.map.goals, self.camera, color=(0.8, 0.1, 0.1))
+            self.orb_shader.render(self.map.goals, self.camera, color=(1.0, 0.1, 0.1))
 
         # --- RESET BLEND ---
         self.ctx.blend_func = self.ctx.SRC_ALPHA, self.ctx.ONE_MINUS_SRC_ALPHA
