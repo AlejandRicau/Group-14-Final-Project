@@ -8,12 +8,17 @@ class GameOverView(arcade.View):
         self.wave_reached = wave_reached
         self.money_earned = money_earned
 
+        # Create a Camera for the UI
+        self.camera = arcade.camera.Camera2D()
+
     def on_show_view(self):
         arcade.set_background_color(arcade.color.BLACK)
 
     def on_draw(self):
         self.clear()
+        self.camera.use()
 
+        # Now draw your text as normal
         arcade.draw_text(
             "GAME OVER",
             self.window.width / 2, self.window.height / 2 + 60,
@@ -39,7 +44,6 @@ class GameOverView(arcade.View):
         )
 
     def on_mouse_press(self, _x, _y, _button, _modifiers):
-        # Import locally to avoid circular imports
         from src.views.start_view import StartView
         start_view = StartView()
         self.window.show_view(start_view)
