@@ -16,8 +16,9 @@ class Tower(arcade.Sprite):
         self.create_range_display()
 
         # create the tower target dot visual
-        self.target_dot = None
-        self.create_target_dot()
+        if TARGET_DOT:
+            self.target_dot = None
+            self.create_target_dot()
 
         self.frequency = freq       #<-- How often the tower attacks [1/second]
         self.on_target: Enemy | None = None       #<-- Enemy currently being targeted
@@ -37,7 +38,8 @@ class Tower(arcade.Sprite):
         """
         self.update_position_for_map_expansion()
         self.update_display_texture()
-        self.update_target_dot()
+        if TARGET_DOT:
+            self.update_target_dot()
         self.cooldown_effect.update()
 
     def update_position_for_map_expansion(self):
@@ -53,23 +55,20 @@ class Tower(arcade.Sprite):
         self.range_display.center_y = self.tile.center_y
 
     def create_range_display(self):
-        """
-        Creates a circular range display as a Sprite with a proper hitbox
-        """
-        # Create a circle texture
-        diameter = self.range_radius * 2
-        circle_tex = arcade.make_circle_texture(diameter, arcade.color.GRAY)
+        """Creates a HOLLOW RING range display."""
+        diameter = int(self.range_radius * 2)
 
-        # Create a Sprite with that texture
+        # --- FIX: Use Ring Texture ---
+        circle_tex = make_ring_texture(diameter, (200, 200, 200, 255), thickness=2)
+
         self.range_display = arcade.Sprite()
         self.range_display.texture = circle_tex
-
-        # Set position
         self.range_display.center_x = self.tile.center_x
         self.range_display.center_y = self.tile.center_y
 
-        # Make it semi-transparent
-        self.range_display.alpha = RANGE_DISPLAY_OPACITY
+        # Increase opacity for the thin line (was 50)
+        self.range_display.alpha = 150
+        self.range_display.visible = False  # Start hidden by default
 
     def toggle_range_display(self):
         """Hide or show the range display"""
@@ -79,15 +78,15 @@ class Tower(arcade.Sprite):
         """Updates the range display texture based on the tower's state"""
         # If tower is on target, color red, else gray
         if self.on_target:
-            color = arcade.color.RED
+            color = (255, 50, 50, 255)  # Red
         else:
-            color = arcade.color.GRAY
+            color = (200, 200, 200, 255)  # Gray
 
-        # Replace the texture dynamically
-        diameter = self.range_radius * 2
-        new_tex = arcade.make_circle_texture(diameter, color)
+        diameter = int(self.range_radius * 2)
+        new_tex = make_ring_texture(diameter, color, thickness=2)
+
         self.range_display.texture = new_tex
-        self.range_display.alpha = RANGE_DISPLAY_OPACITY
+        self.range_display.alpha = 150
 
     def acquire_target(self, enemy_list):
         """
@@ -115,21 +114,23 @@ class Tower(arcade.Sprite):
 
     def create_target_dot(self):
         """Creates a circular target aim as a Sprite"""
-        self.target_dot = arcade.SpriteCircle(TARGET_DOT_RADIUS, arcade.color.RED)
-        self.target_dot.visible = False     # Make it invisible
-        self.target_dot.center_x = self.tile.center_x
-        self.target_dot.center_y = self.tile.center_y
+        if TARGET_DOT:
+            self.target_dot = arcade.SpriteCircle(TARGET_DOT_RADIUS, arcade.color.RED)
+            self.target_dot.visible = False     # Make it invisible
+            self.target_dot.center_x = self.tile.center_x
+            self.target_dot.center_y = self.tile.center_y
 
     def update_target_dot(self):
         """Updates the target dot's position to the tower's tile"""
-        if self.on_target:
-            self.target_dot.center_x = self.on_target.center_x
-            self.target_dot.center_y = self.on_target.center_y
-            self.target_dot.visible = True
-        else:
-            self.target_dot.center_x = self.center_x
-            self.target_dot.center_y = self.center_y
-            self.target_dot.visible = False
+        if TARGET_DOT:
+            if self.on_target:
+                self.target_dot.center_x = self.on_target.center_x
+                self.target_dot.center_y = self.on_target.center_y
+                self.target_dot.visible = True
+            else:
+                self.target_dot.center_x = self.center_x
+                self.target_dot.center_y = self.center_y
+                self.target_dot.visible = False
 
     def _fire_condition(self, delta_time: float):
         """
@@ -178,37 +179,33 @@ class BaseTower(Tower):
         # Early exit if not ready to attack
         if not super()._fire_condition(delta_time): return
 
-        # --- Play Sound ---
         sound_manager.play_sound("base_shoot", volume=0.4)
 
-        '''add visual effect'''
-        # Add steam puff centered around the tower when shooting
+        # 1. Steam Puff at Tower
         visual_effect_list.append(
             SteamPuff(
                 self.center_x, self.center_y,
                 size=TOWER_PUFF_SIZE_BASIC))
 
-        # Add bullet
+        # 2. Bullet (Pass damage/target here!)
         visual_effect_list.append(
             Bullet(
-                self.center_x,
-                self.center_y,
-                self.on_target.center_x,
-                self.on_target.center_y))
+                start_x=self.center_x,
+                start_y=self.center_y,
+                target_x=self.on_target.center_x,
+                target_y=self.on_target.center_y,
+                visual_effect_list=visual_effect_list,
+                # --- NEW ARGS ---
+                target_enemy=self.on_target,
+                damage=self.damage
+            )
+        )
 
-        # Add smaller steam puff centered around the target when shooting
-        dist = math.hypot(self.center_x, self.center_y, self.on_target.center_x, self.on_target.center_y)
-        delay_time = dist / BULLET_SPEED / CORRECTION_RATIO
-        visual_effect_list.append(
-            SteamPuff(
-                self.on_target.center_x,
-                self.on_target.center_y,
-                size = EXPLODE_PUFF_SIZE_BASIC,
-                delay = delay_time))
+        # --- REMOVED: Immediate Damage ---
+        # self.on_target.deal_damage(self.damage)  <-- DELETED
 
-        # deal damage to the target
-        self.on_target.deal_damage(self.damage)
-        self.cooldown = 1.0 / self.frequency        # Reset cooldown
+        # Reset cooldown
+        self.cooldown = 1.0 / self.frequency
 
 
 

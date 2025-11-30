@@ -517,7 +517,8 @@ class GameView(arcade.View):
                     tile.tower.update()
                     self.tower_list.append(tile.tower)
                     self.range_display_list.append(tile.tower.range_display)
-                    self.range_display_list.append(tile.tower.target_dot)
+                    if TARGET_DOT:
+                        self.range_display_list.append(tile.tower.target_dot)
 
 
     def add_tower(self, tile, t_type="base"):
@@ -544,7 +545,8 @@ class GameView(arcade.View):
         # add tower to the tower list
         self.tower_list.append(tower)
         self.range_display_list.append(tower.range_display)
-        self.range_display_list.append(tower.target_dot)
+        if TARGET_DOT:
+            self.range_display_list.append(tower.target_dot)
 
 
 

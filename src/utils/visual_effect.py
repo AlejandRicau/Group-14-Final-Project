@@ -317,8 +317,13 @@ class LaserEffect:
 
 
 class Bullet:
-    def __init__(self, start_x, start_y, target_x, target_y):
-        # initialize bullet properties
+    def __init__(self, start_x, start_y, target_x, target_y, visual_effect_list, target_enemy, damage):
+        self.visual_effect_list = visual_effect_list
+
+        # Store game logic data
+        self.target_enemy = target_enemy
+        self.damage = damage
+
         self.start_x = start_x
         self.start_y = start_y
         self.current_x = start_x
@@ -327,28 +332,39 @@ class Bullet:
         self.target_y = target_y
         self.speed = BULLET_SPEED
 
-        # Compute normalized direction
         self.dir_x, self.dir_y = unit_direction_vector(start_x, start_y, target_x, target_y)
 
-        # initialize bullet state
         self.can_be_removed = False
-        self.trail_length = 10  # pixels
+        self.trail_length = 10
         self.time_alive = 0.0
 
     def update(self, delta_time):
         if self.can_be_removed:
             return
 
-        # move the bullet as per its direction
         move_dist = self.speed * delta_time
         self.current_x += self.dir_x * move_dist
         self.current_y += self.dir_y * move_dist
         self.time_alive += delta_time
 
-        # Check if reached target
+        # Check Arrival
         distance_traveled = math.hypot(self.current_x - self.start_x, self.current_y - self.start_y)
-        distance_total    = math.hypot(self.target_x  - self.start_x, self.target_y  - self.start_y)
+        distance_total = math.hypot(self.target_x - self.start_x, self.target_y - self.start_y)
+
         if distance_traveled >= distance_total:
+            # --- FIX: Deal Damage HERE (Synced with Visuals) ---
+            # We check if the enemy is still alive/valid before hitting them
+            if self.target_enemy and self.target_enemy.health > 0:
+                self.target_enemy.deal_damage(self.damage)
+
+            # Spawn Puff
+            self.visual_effect_list.append(
+                SteamPuff(
+                    self.target_x,
+                    self.target_y,
+                    size=EXPLODE_PUFF_SIZE_BASIC
+                )
+            )
             self.can_be_removed = True
 
     def draw(self):
