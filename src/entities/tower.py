@@ -151,6 +151,9 @@ class Tower(arcade.Sprite):
     def upgrade(self):
         self.level += 1
 
+    def attack_update(self, delta_time, visual_effect_list, sound_manager):
+        pass  # Base implementation
+
 
 
 class BaseTower(Tower):
@@ -163,16 +166,20 @@ class BaseTower(Tower):
         )
         self.texture = TOWER_TEXTURES['base']
 
-    def attack_update(self, delta_time, visual_effect_list):
+    def attack_update(self, delta_time, visual_effect_list, sound_manager):
         """
         Attack the target enemy alone
 
         Args:
             delta_time (float): Time elapsed since last frame
             visual_effect_list (list): List of all visual effects in the src
+            sound_manager: for playing sound effects
         """
         # Early exit if not ready to attack
         if not super()._fire_condition(delta_time): return
+
+        # --- Play Sound ---
+        sound_manager.play_sound("base_shoot", volume=0.4)
 
         '''add visual effect'''
         # Add steam puff centered around the tower when shooting
@@ -220,7 +227,7 @@ class AOETower(Tower):
         self.damage_enemy_list : list[Enemy] = []
         self.boom_trajectory_visual_effect = None
 
-    def attack_update(self, delta_time, visual_effect_list):
+    def attack_update(self, delta_time, visual_effect_list, sound_manager):
         """
         Attack all enemies within the AOE radius
 
@@ -240,6 +247,9 @@ class AOETower(Tower):
                 self.boom_trajectory_visual_effect.target_x = self.on_target.center_x
                 self.boom_trajectory_visual_effect.target_y = self.on_target.center_y
             return
+
+        # play shooting sound
+        sound_manager.play_sound("aoe_shoot", volume=0.6)
 
         '''add visual effect'''
         # Add steam puff centered around the tower when shooting
@@ -297,7 +307,7 @@ class LaserTower(Tower):
         self.laser_length = LASER_TOWER_BEAM_LENGTH
         self.pt_beam_end = (0, 0)
 
-    def attack_update(self, delta_time, visual_effect_list):
+    def attack_update(self, delta_time, visual_effect_list, sound_manager):
         """
         Attack all enemies in the chain
 
@@ -307,6 +317,10 @@ class LaserTower(Tower):
         """
         # Early exit conditions
         if not self._fire_condition(delta_time): return
+
+        # Play sound
+
+        sound_manager.play_sound("laser_shoot", volume=0.4)
 
         # Create visual effect
         x_end, y_end = self.pt_beam_end

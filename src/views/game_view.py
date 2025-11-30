@@ -7,6 +7,7 @@ import random
 from src.managers.game_manager import GameManager
 from src.managers.wave_manager import WaveManager
 from src.utils.visual_effect import *
+from src.managers.sound_manager import SoundManager
 
 
 class GameView(arcade.View):
@@ -28,6 +29,10 @@ class GameView(arcade.View):
         self.game_manager = GameManager()
         self.wave_manager = WaveManager(self)
 
+        # Sound Manager
+        self.sound_manager = SoundManager()
+
+
         # Tower to place
         self.selected_tower_type = None
 
@@ -41,7 +46,6 @@ class GameView(arcade.View):
         self.wave_label = None
         self.ui_layout = None
 
-        self.setup_ui()
 
         # Sprite Lists
         self.camera = arcade.camera.Camera2D()
@@ -54,8 +58,6 @@ class GameView(arcade.View):
         self.visual_effect_list = []
         self.vignette_list = arcade.SpriteList()  # Don't forget this!
 
-        # Initialize Managers
-        self.game_manager = GameManager()
 
         # --- FIX: Get Framebuffer from the Window Object ---
         # Views don't have .get_framebuffer_size() directly, the window does.
@@ -76,8 +78,10 @@ class GameView(arcade.View):
             self.map.recursive_path_generation(self.map.spawns[0], self.map.goals[0])
             self.map.calculate_autotiling()
 
-
+        # Initial Calls
         self.rebuild_background_list()
+        self.sound_manager.start_ambience()
+        self.setup_ui()
 
         # Camera control parameters
         self.camera_speed = 20
@@ -322,7 +326,7 @@ class GameView(arcade.View):
         # Update tower detection
         for tower in self.tower_list:
             tower.acquire_target(self.enemy_list)
-            tower.attack_update(delta_time, self.visual_effect_list)
+            tower.attack_update(delta_time, self.visual_effect_list, self.sound_manager)
 
         # Update visual effects
         for vis in self.visual_effect_list[:]:
@@ -336,6 +340,8 @@ class GameView(arcade.View):
 
         #  Check Game Over Condition
         if self.game_manager.lives <= 0:
+            # stop ambiance sounds
+            self.sound_manager.stop_ambience()
             # Switch to Game-Over View
             from src.views.game_over_view import GameOverView
 
@@ -409,6 +415,10 @@ class GameView(arcade.View):
         self.add_tower(tile, t_type)
         self.game_manager.spend_money(TOWER_COST)
         print(f"Tower placed! Remaining Money: {self.game_manager.money}")
+
+        #  Play Sound
+        self.sound_manager.play_sound("build")
+
         return True
 
     def on_key_press(self, symbol, modifiers):
