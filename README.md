@@ -64,4 +64,8 @@ Group-14-Final-Project/
     ├── managers/           # Logic (GameManager, WaveManager)
     ├── map/                # Procedural generation logic
     └── utils/              # Helper functions and Shader wrappers
+```
 
+## Credits
+
+This game was developed by Tianqin Puyang and Alejandro Ricaurte, with heavy help from the arcade documentation and examples.
