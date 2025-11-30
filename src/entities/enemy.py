@@ -5,7 +5,7 @@ from src.ui.indicator_bar import IndicatorBar
 
 
 class Enemy(arcade.Sprite):
-    def __init__(self, path, game_manager, bar_list, health=100, damage=10, speed=100, reward=10):
+    def __init__(self, path, game_manager, bar_list, health=100, damage=1, speed=100, reward=10):
         # 1. Load Texture
         texture = arcade.load_texture(":resources:images/animated_characters/zombie/zombie_idle.png")
         desired_size = TILE_SIZE * 0.8
@@ -53,9 +53,8 @@ class Enemy(arcade.Sprite):
             self.kill()
 
     def reach_goal(self):
-        print(f"Enemy reached goal! Dealt {self.damage} damage.")
         # Penalize Player
-        self.game_manager.lose_life(1)
+        self.game_manager.lose_life(self.damage)
         self.kill()
 
     def kill(self):

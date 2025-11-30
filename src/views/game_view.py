@@ -9,13 +9,20 @@ from src.managers.wave_manager import WaveManager
 from src.utils.visual_effect import *
 
 
-class GameView(arcade.Window):
-    def __init__(self, width, height, tile_size):
-        super().__init__(width * tile_size, height * tile_size, "Tower Defense")
+class GameView(arcade.View):
+    def __init__(self, grid_width, grid_height, tile_size):
+        # 2. Call super().__init__() without arguments
+        # Views don't create windows, they just exist in them.
+        super().__init__()
+
+        # Grab the existing window to get sizes
+        window = arcade.get_window()
+
+        # Set background (Global function, or via window)
         arcade.set_background_color(COLOR_BACKGROUND)
 
         self.tile_size = tile_size
-        self.map = Map(width, height)
+        self.map = Map(grid_width, grid_height)
 
         # Game Managers
         self.game_manager = GameManager()
@@ -28,15 +35,13 @@ class GameView(arcade.Window):
         self.ui_manager = arcade.gui.UIManager()
         self.ui_manager.enable()
 
-        self.setup_ui()
-
-        # Create the variables to hold our labels so we can update them later
+        # Create variables
         self.money_label = None
         self.lives_label = None
         self.wave_label = None
         self.ui_layout = None
 
-        self.setup_ui()  # Helper function to build the layout
+        self.setup_ui()
 
         # Sprite Lists
         self.camera = arcade.camera.Camera2D()
@@ -47,13 +52,16 @@ class GameView(arcade.Window):
         self.bar_list = arcade.SpriteList()
         self.ghost_list = arcade.SpriteList()
         self.visual_effect_list = []
+        self.vignette_list = arcade.SpriteList()  # Don't forget this!
 
         # Initialize Managers
         self.game_manager = GameManager()
 
-        # Initialize Shaders
-        fb_size = self.get_framebuffer_size()
+        # --- FIX: Get Framebuffer from the Window Object ---
+        # Views don't have .get_framebuffer_size() directly, the window does.
+        fb_size = window.get_framebuffer_size()
 
+        # Initialize Shaders
         self.orb_shader = OrbShader(fb_size)
         self.beam_shader = BeamShader(fb_size)
         self.laser_shader = LaserShader(fb_size)
@@ -61,14 +69,13 @@ class GameView(arcade.Window):
         self.vignette_shader = VignetteShader(fb_size)
 
         # GUI Camera
-        # We use a second camera for the UI so it stays static
-        # while the map camera moves around.
         self.gui_camera = arcade.camera.Camera2D()
 
         # Initial build
         if self.map.spawns and self.map.goals:
             self.map.recursive_path_generation(self.map.spawns[0], self.map.goals[0])
             self.map.calculate_autotiling()
+
 
         self.rebuild_background_list()
 
@@ -221,12 +228,15 @@ class GameView(arcade.Window):
         self.camera.use()
         self.background_list.draw()
 
+        # --- FIX: Use self.window.ctx instead of self.ctx ---
         # Tower Glows (Behind towers)
-        self.ctx.enable(self.ctx.BLEND)
-        self.ctx.blend_func = self.ctx.SRC_ALPHA, self.ctx.ONE
+        self.window.ctx.enable(self.window.ctx.BLEND)
+        self.window.ctx.blend_func = self.window.ctx.SRC_ALPHA, self.window.ctx.ONE
+
         if self.tower_list:
             self.orb_shader.render(self.tower_list, self.camera, color=(1.0, 0.8, 0.2))
-        self.ctx.blend_func = self.ctx.SRC_ALPHA, self.ctx.ONE_MINUS_SRC_ALPHA
+
+        self.window.ctx.blend_func = self.window.ctx.SRC_ALPHA, self.window.ctx.ONE_MINUS_SRC_ALPHA
 
         # Draw Objects
         self.tower_list.draw()
@@ -238,11 +248,10 @@ class GameView(arcade.Window):
             tower.cooldown_effect.draw()
 
         # --- PASS 1: VIGNETTE & STEAM (Standard Blend) ---
-        self.ctx.enable(self.ctx.BLEND)
-        self.ctx.blend_func = self.ctx.SRC_ALPHA, self.ctx.ONE_MINUS_SRC_ALPHA
+        self.window.ctx.enable(self.window.ctx.BLEND)
+        self.window.ctx.blend_func = self.window.ctx.SRC_ALPHA, self.window.ctx.ONE_MINUS_SRC_ALPHA
 
-        # A. Vignette (Darkness)
-        # Combine light sources to punch holes in the dark
+        # A. Vignette
         light_sources = []
         if self.tower_list: light_sources.extend(self.tower_list)
         if self.map.goals:  light_sources.extend(self.map.goals)
@@ -256,7 +265,7 @@ class GameView(arcade.Window):
             self.steam_shader.render(puffs, self.camera)
 
         # --- PASS 2: GLOWS (Additive Blend) ---
-        self.ctx.blend_func = self.ctx.SRC_ALPHA, self.ctx.ONE
+        self.window.ctx.blend_func = self.window.ctx.SRC_ALPHA, self.window.ctx.ONE
 
         bullets = [x for x in self.visual_effect_list if isinstance(x, Bullet)]
         lasers = [x for x in self.visual_effect_list if isinstance(x, LaserEffect)]
@@ -269,11 +278,8 @@ class GameView(arcade.Window):
         if steam_booms:
             self.orb_shader.render(steam_booms, self.camera, color=(0.6, 0.85, 1.0))
 
-        # REMOVED: Goal Square Glow
-        # The goals now just light up via the Vignette Shader (in light_sources above)
-
         # --- RESET ---
-        self.ctx.blend_func = self.ctx.SRC_ALPHA, self.ctx.ONE_MINUS_SRC_ALPHA
+        self.window.ctx.blend_func = self.window.ctx.SRC_ALPHA, self.window.ctx.ONE_MINUS_SRC_ALPHA
 
         # 3. Draw Actual Projectile Sprites
         for vis in self.visual_effect_list:
@@ -281,7 +287,7 @@ class GameView(arcade.Window):
 
         # 4. Draw Ghost & UI
         if self.selected_tower_type and len(self.ghost_list) > 0:
-            wx, wy, _ = self.camera.unproject((self._mouse_x, self._mouse_y))
+            wx, wy, _ = self.camera.unproject((self.window._mouse_x, self.window._mouse_y))
             self.ghost_list[0].position = (wx, wy)
             self.ghost_list.draw()
 
@@ -327,6 +333,19 @@ class GameView(arcade.Window):
         # Update UI Values
         self.wave_manager.update(delta_time)
         self.update_ui_values()
+
+        #  Check Game Over Condition
+        if self.game_manager.lives <= 0:
+            # Switch to Game-Over View
+            from src.views.game_over_view import GameOverView
+
+            # Pass data (Wave and Score)
+            view = GameOverView(
+                wave_reached=self.wave_manager.current_wave,
+                money_earned=self.game_manager.score  # Assuming you track total score
+            )
+            self.window.show_view(view)
+            return  # Stop updating this view
 
         # Handle camera movement
         self.handle_camera_movement()
@@ -396,7 +415,7 @@ class GameView(arcade.Window):
         self.keys_held.add(symbol)
 
         if symbol == arcade.key.ESCAPE:
-            self.close()
+            self.window.close()
 
     def on_key_release(self, symbol, modifiers):
         if symbol in self.keys_held:

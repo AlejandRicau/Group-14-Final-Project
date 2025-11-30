@@ -169,7 +169,7 @@ DX_REGION_OF_ISOLATION = 3
 
 # 1. How many enemies spawn in a given wave?
 # Example: Wave 1 = 5 enemies. Wave 10 = 23 enemies.
-GET_ENEMY_COUNT = lambda wave: int(5 + (wave * 1.8))
+GET_ENEMY_COUNT = lambda wave: int(10 + (wave * 2.8))
 
 # 2. How fast do enemies spawn? (Seconds between enemies)
 # Example: Starts at 1.5s, gets faster but caps at 0.2s minimum
