@@ -1,5 +1,5 @@
-from constants import *
-from Map import Map
+from src.constants import *
+from src.map.map_generator import Map
 import arcade
 from PIL import Image, ImageDraw
 

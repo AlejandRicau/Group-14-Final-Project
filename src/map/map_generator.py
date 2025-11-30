@@ -1,6 +1,6 @@
-from constants import *
-from helper_functions import *
-from Tile import Tile
+from src.constants import *
+from src.utils.helper_functions import *
+from src.entities.tile import Tile
 import random
 
 class Map:

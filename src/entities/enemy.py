@@ -1,7 +1,7 @@
-from constants import *
+from src.constants import *
 import arcade
 import math
-from IndicatorBar import IndicatorBar
+from src.ui.indicator_bar import IndicatorBar
 
 
 class Enemy(arcade.Sprite):

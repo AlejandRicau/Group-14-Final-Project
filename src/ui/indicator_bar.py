@@ -1,4 +1,3 @@
-from constants import *
 import arcade
 class IndicatorBar:
     """

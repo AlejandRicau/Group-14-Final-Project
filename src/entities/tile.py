@@ -1,5 +1,4 @@
-from helper_functions import *
-from constants import *
+from src.constants import *
 import arcade
 
 class Tile(arcade.Sprite):
