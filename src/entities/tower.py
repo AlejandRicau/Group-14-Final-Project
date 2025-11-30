@@ -1,7 +1,7 @@
-from helper_functions import *
-from visual_effect import *
-from constants import *
-from Enemy import Enemy
+from src.utils.helper_functions import *
+from src.utils.visual_effect import *
+from src.constants import *
+from src.entities.enemy import Enemy
 import arcade
 
 class Tower(arcade.Sprite):
@@ -94,7 +94,7 @@ class Tower(arcade.Sprite):
         Acquires the closest enemy within range
 
         Args:
-            enemy_list (list): List of all enemies from the game/window
+            enemy_list (list): List of all enemies from the src/window
         """
         # Initialize variables
         closest = None
@@ -169,7 +169,7 @@ class BaseTower(Tower):
 
         Args:
             delta_time (float): Time elapsed since last frame
-            visual_effect_list (list): List of all visual effects in the game
+            visual_effect_list (list): List of all visual effects in the src
         """
         # Early exit if not ready to attack
         if not super()._fire_condition(delta_time): return
@@ -226,7 +226,7 @@ class AOETower(Tower):
 
         args:
             delta_time (float): Time elapsed since last frame
-            visual_effect_list (list): List of all visual effects in the game
+            visual_effect_list (list): List of all visual effects in the src
         """
         # reset the trajectory
         if (self.boom_trajectory_visual_effect
@@ -303,7 +303,7 @@ class LaserTower(Tower):
 
         args:
             delta_time (float): Time elapsed since last frame
-            visual_effect_list (list): List of all visual effects in the game
+            visual_effect_list (list): List of all visual effects in the src
         """
         # Early exit conditions
         if not self._fire_condition(delta_time): return

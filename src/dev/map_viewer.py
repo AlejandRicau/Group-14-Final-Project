@@ -1,14 +1,12 @@
-from constants import *
-from helper_functions import *
-from Map import Map
-from Tile import Tile
-from Enemy import Enemy
-from Tower import BaseTower, AOETower, LaserTower
+from src.constants import *
+from src.map.map_generator import Map
+from src.entities.tile import Tile
+from src.entities.enemy import Enemy
+from src.entities.tower import BaseTower, AOETower, LaserTower
 import arcade
 import arcade.gui
 import random
-import math
-from GameManager import GameManager
+from src.managers.game_manager import GameManager
 
 
 class MapViewer(arcade.Window):

@@ -1,10 +1,10 @@
 import random
-from constants import *
+from src.constants import *
 
 
 class WaveManager:
     def __init__(self, game_view):
-        self.game = game_view  # Reference to the main game to call methods
+        self.game = game_view  # Reference to the main src to call methods
         self.current_wave = 0
 
         # State: "BETWEEN_WAVES", "SPAWNING", "WAITING_FOR_CLEAR"

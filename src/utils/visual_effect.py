@@ -1,15 +1,31 @@
-from constants import *
+from src.constants import *
 from random import uniform
 import arcade
 import math
 from arcade.experimental.shadertoy import Shadertoy
+from pathlib import Path
+
+# ==========================================
+#        DYNAMIC PATH CONFIGURATION
+# ==========================================
+# 1. Get the directory of THIS file (src/utils/)
+CURRENT_FILE_DIR = Path(__file__).parent
+
+# 2. Go up 2 levels to the Project Root (src/utils -> src -> root)
+PROJECT_ROOT = CURRENT_FILE_DIR.parent.parent
+
+# 3. Define the Shaders folder
+# IMPORTANT: Check if your folder is named "shaders" or "Shaders" (Case Sensitive!)
+SHADER_DIR = PROJECT_ROOT / "assets" / "shaders"
+# ==========================================
 
 
 class OrbShader:
     """Handles glowing circles (AOE, Goals)"""
 
     def __init__(self, window_size):
-        self.shader = Shadertoy.create_from_file(window_size, "Shaders/glow_point.glsl")
+        shader_path = SHADER_DIR / "glow_point.glsl"
+        self.shader = Shadertoy.create_from_file(window_size, str(shader_path))
 
     def render(self, object_list, camera, color=(1.0, 0.1, 0.1)):
         if not object_list: return
@@ -53,7 +69,8 @@ class BeamShader:
     """Handles SOLID glowing lines (Bullets)"""
 
     def __init__(self, window_size):
-        self.shader = Shadertoy.create_from_file(window_size, "Shaders/glow_beam.glsl")
+        shader_path = SHADER_DIR / "glow_beam.glsl"
+        self.shader = Shadertoy.create_from_file(window_size, str(shader_path))
 
     def render(self, bullet_list, camera, color=(1.0, 0.9, 0.5)):
         if not bullet_list: return
@@ -103,8 +120,8 @@ class LaserShader:
     """Handles GRADIENT glowing lines (Lasers)"""
 
     def __init__(self, window_size):
-        # Load the GRADIENT shader
-        self.shader = Shadertoy.create_from_file(window_size, "Shaders/glow_laser.glsl")
+        shader_path = SHADER_DIR / "glow_laser.glsl"
+        self.shader = Shadertoy.create_from_file(window_size, str(shader_path))
 
     def render(self, laser_list, camera, color=(0.4, 1.0, 0.6)):
         if not laser_list: return
@@ -146,7 +163,8 @@ class LaserShader:
 
 class SteamShader:
     def __init__(self, window_size):
-        self.shader = Shadertoy.create_from_file(window_size, "Shaders/steam.glsl")
+        shader_path = SHADER_DIR / "steam.glsl"
+        self.shader = Shadertoy.create_from_file(window_size, str(shader_path))
 
     def render(self, puff_list, camera):
         if not puff_list: return
@@ -199,7 +217,8 @@ class SteamShader:
 
 class VignetteShader:
     def __init__(self, window_size):
-        self.shader = Shadertoy.create_from_file(window_size, "Shaders/vignette.glsl")
+        shader_path = SHADER_DIR / "vignette.glsl"
+        self.shader = Shadertoy.create_from_file(window_size, str(shader_path))
 
     def render(self, tower_list, camera):
         # We render even if tower_list is empty, because we still need the base vignette!
