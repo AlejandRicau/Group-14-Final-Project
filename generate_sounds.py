@@ -222,72 +222,74 @@ def generate_musical_ambience(duration=60.0):
 
 def generate_dark_eyes_melody():
     """
-    Generates 'The Eyes of Texas' in its ORIGINAL D Major (Sheet Music Accurate).
-    Use this to verify the rhythm and melody.
+    Generates 'The Eyes of Texas' using your corrected rhythm.
+    Transposed to G Minor (B -> Bb) for the dark vibe.
     """
-    print("Synthesizing Verification: The Eyes of Texas (D Major)...")
+    print("Synthesizing Easter Egg: The Eyes of Texas (Corrected Dark)...")
 
-    # 1. Define Frequencies (D Major)
-    # A4, B4, C#5, D5, E5, F#5, G5
-    N_G4 = 392.00
-    N_A4 = 440.00  # Pickup / End
-    N_B4 = 493.88
-    N_D5 = 587.33  # Root
-    N_E5 = 659.25
-    N_Fsharp5 = 739.99
+    # 1. Define Frequencies (G Minor)
+    N_D4 = 293.66  # Low 5th
+    N_G4 = 392.00  # Root
+    N_A4 = 440.00  # 2nd
+    N_Bb4 = 466.16  # Minor 3rd (The "Sad" Note - replaces B4)
 
-    # 2. Define Rhythm (6/8 Time)
-    # 1 Tick = Eighth Note
-    tick = 0.22  # Slightly faster for the waltz feel
+    # 2. Define Rhythm
+    # Beat = 0.35 seconds (Slow but recognizable)
+    beat = 0.35
 
-    # (Frequency, Duration in Ticks)
+    # (Frequency, Duration in Beats)
+    # Using your exact rhythm, but swapping B4 for Bb4
     melody = [
-        # Pickup
-        (N_A4, 1),  # "The" (Eighth)
+        # "The" (Pickup)
+        (N_D4, 1.5),
 
-        # Bar 1
-        (N_D5, 2),  # "Eyes" (Quarter)
-        (N_E5, 1),  # "of"   (Eighth)
-        (N_Fsharp5, 2),  # "Tex-" (Quarter)
-        (N_D5, 1),  # "-as"  (Eighth)
+        # "Eyes of Tex-as"
+        (N_G4, 2.5),  # Eyes
+        (N_D4, 0.5),  # of
+        (N_G4, 1.0),  # Tex
+        (N_D4, 0.5),  # as
 
-        # Bar 2
-        (N_B4, 2),  # "are"  (Quarter)
-        (N_A4, 1),  # "up-"  (Eighth)
-        (N_G4, 3),  # "-on"  (Dotted Quarter)
+        # "are up-on"
+        (N_G4, 1.0),  # are
+        (N_A4, 0.5),  # up
+        (N_Bb4, 3.0),  # on (The Dark Note!)
 
-        # Bar 3
-        (N_A4, 6),  # "you"  (Dotted Half)
+        # "you"
+        (N_G4, 3.0),  # you
     ]
 
     # Calculate length
-    total_ticks = sum(note[1] for note in melody)
-    total_seconds = (total_ticks * tick) + 4.0
+    total_beats = sum(note[1] for note in melody)
+    total_seconds = (total_beats * beat) + 5.0
     total_samples = int(44100 * total_seconds)
 
     master_buffer = [0.0] * total_samples
 
     current_sample_idx = 0
 
-    for freq, duration_ticks in melody:
-        # Standard clear bell sound for verification
-        note_samples = int(44100 * 3.0)
+    for freq, duration_beats in melody:
+        # Long ring time for atmosphere
+        note_samples = int(44100 * 4.0)
 
         for i in range(note_samples):
             if current_sample_idx + i >= total_samples: break
 
             t = i / 44100
 
-            # Bright Brass/Bell Tone
+            # Heavy Iron Bell Tone
             wave = math.sin(2 * math.pi * freq * t)
-            wave += 0.5 * math.sin(2 * math.pi * freq * 2 * t)
+            # Add the Minor 3rd harmonic explicitly to reinforce the darkness
+            wave += 0.5 * math.sin(2 * math.pi * (freq * 1.2) * t)
+            # Sub-octave for weight
+            wave += 0.3 * math.sin(2 * math.pi * (freq * 0.5) * t)
 
-            env = math.exp(-1.5 * t)
+            # Envelope
+            env = math.exp(-1.0 * t)
 
             val = wave * env * 0.4
             master_buffer[current_sample_idx + i] += val
 
-        current_sample_idx += int(duration_ticks * tick * 44100)
+        current_sample_idx += int(duration_beats * beat * 44100)
 
     # Write
     data = bytearray()
@@ -305,7 +307,7 @@ if __name__ == "__main__":
     write_wav("aoe_thud.wav", generate_thud(0.4))
     write_wav("build_clang.wav", generate_clang(0.3))
     write_wav("laser_hum.wav", generate_heavy_steam(1.0))
-    write_wav("ambience_loop.wav", generate_musical_ambience(60.0))
+    # write_wav("ambience_loop.wav", generate_musical_ambience(60.0))
 
     # --- Generate the Easter Egg ---
     write_wav("easter_egg.wav", generate_dark_eyes_melody())
