@@ -45,6 +45,7 @@ A procedural Tower Defense game set in the steam tunnels underneath UT Austin. B
 ##  Controls
 
 * **Mouse:** Interaction (Click buttons, select towers).
+* **Arrow Keys:** Move the camera.
 * **Hammer Icon:** Toggle the Build Menu.
 * **Left Click (Map):** Place selected tower / Select existing tower to view range.
 * **ESC:** Close the game.
