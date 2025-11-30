@@ -307,7 +307,7 @@ if __name__ == "__main__":
     write_wav("aoe_thud.wav", generate_thud(0.4))
     write_wav("build_clang.wav", generate_clang(0.3))
     write_wav("laser_hum.wav", generate_heavy_steam(1.0))
-    # write_wav("ambience_loop.wav", generate_musical_ambience(60.0))
+    write_wav("ambience_loop.wav", generate_musical_ambience(60.0))
 
     # --- Generate the Easter Egg ---
     write_wav("easter_egg.wav", generate_dark_eyes_melody())

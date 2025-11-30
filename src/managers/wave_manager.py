@@ -54,6 +54,7 @@ class WaveManager:
             self.game.map.generate_new_special_point("spawn")
             self.game.rebuild_background_list()
             map_changed = True
+            self.game.sound_manager.play_sound("easter_egg", volume=0.5)
 
         # New Goal
         if SHOULD_ADD_GOAL(self.current_wave):
