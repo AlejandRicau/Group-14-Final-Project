@@ -110,126 +110,204 @@ def generate_heavy_steam(duration=1.0):  # Increased to 1.0 second
 def generate_musical_ambience(duration=60.0):
     """
     Generates a Sequenced Dark Ambient Track.
-    Progression: Em -> C -> Am -> F (i - VI - iv - II)
-    Features: Consistent Chord Changes, Frequent Metallic FX, Seamless Loop.
+    - Chimes: Deep Octave (E4-E5) for a heavy iron bell sound.
+    - Mix: Melodic pads are dominant, wind noise is subtle.
     """
     data = bytearray()
     samples_count = int(44100 * duration)
 
-    # --- MUSICAL STRUCTURE ---
-    # Chords (frequencies in Hz)
-    # E Minor (Root)
-    chord_1 = [82.41, 123.47, 164.81]  # E2, B2, E3
-    # C Major (The looming giant)
-    chord_2 = [65.41, 98.00, 130.81]  # C2, G2, C3
-    # A Minor (The sadness)
-    chord_3 = [55.00, 110.00, 164.81]  # A1, A2, E3
-    # F Major (The Phrygian Tension)
-    chord_4 = [87.31, 130.81, 174.61]  # F2, C3, F3
-
+    # --- MUSICAL STRUCTURE (Pads) ---
+    chord_1 = [82.41, 123.47, 164.81]  # E minor
+    chord_2 = [65.41, 98.00, 130.81]  # C Major
+    chord_3 = [55.00, 110.00, 164.81]  # A Minor
+    chord_4 = [87.31, 130.81, 174.61]  # F Major
     progression = [chord_1, chord_2, chord_3, chord_4]
+    chord_duration = duration / 4.0
 
-    # Timing
-    chord_duration = duration / 4.0  # 15 seconds per chord
+    # --- WIND CHIME SETUP (E Harmonic Minor - DEEP Octave) ---
+    # Dropped another octave. Range: E4 to E5.
+    chime_notes = [
+        329.63,  # E4 (Root)
+        392.00,  # G4 (Min 3rd)
+        493.88,  # B4 (5th)
+        523.25,  # C5 (Min 6th - The "Ghostly" note)
+        622.25,  # D#5 (Maj 7th - Tension)
+        659.25  # E5 (High Root)
+    ]
 
-    # --- METALLIC FX SCHEDULER ---
-    # We want them frequent. Let's schedule one every ~2-4 seconds.
-    chime_events = []
-    cursor = 2.0
-    while cursor < duration - 2.0:  # Don't start chimes at very end
-        chime_events.append(int(cursor * 44100))
-        cursor += random.uniform(2.0, 4.0)  # Gap between chimes
+    chime_voices = [{'timer': 0, 'freq': 0, 'duration': 0} for _ in range(3)]
+
+    print(f"Synthesizing {duration}s Atmosphere (Melodic Mix)...")
 
     # State Variables
     brown_val = 0.0
 
-    print(f"Synthesizing {duration}s Sequenced Atmosphere...")
-
     for i in range(samples_count):
         t = i / 44100
 
-        # 1. SEQUENCER LOGIC
-        # Determine which chord is active based on time
+        # 1. CHORD SEQUENCER
         current_chord_idx = int(t / chord_duration) % 4
         next_chord_idx = (current_chord_idx + 1) % 4
-
-        # Calculate progress within the current chord's window (0.0 to 1.0)
         local_t = (t % chord_duration) / chord_duration
 
-        # Crossfade Logic:
-        # Fade OUT current chord in last 20% of its time
-        # Fade IN next chord in first 20% of its time
-
         vol_current = 1.0
-        if local_t > 0.8:  # Fading out
-            vol_current = (1.0 - local_t) / 0.2
-
+        if local_t > 0.8: vol_current = (1.0 - local_t) / 0.2
         vol_next = 0.0
-        if local_t > 0.8:  # Pre-fading in the next one for overlap
-            vol_next = (local_t - 0.8) / 0.2
+        if local_t > 0.8: vol_next = (local_t - 0.8) / 0.2
 
-        # 2. GENERATE PADS
-        # Function to generate a chord sample
         def get_chord_sample(chord, time_val):
             val = 0
             for idx, freq in enumerate(chord):
-                # Add slight detune for "thick" analog sound
-                osc1 = math.sin(2 * math.pi * freq * time_val)
-                osc2 = math.sin(2 * math.pi * (freq * 1.01) * time_val)
-                # Slow breathing LFO specific to this note
+                osc = math.sin(2 * math.pi * freq * time_val)
                 lfo = math.sin(time_val * (0.5 + idx * 0.1)) * 0.2 + 0.8
-                val += (osc1 + osc2) * 0.5 * lfo
-            return val * 0.15  # Low master volume for pads
+                val += osc * 0.5 * lfo
+
+            # --- VOLUME BOOST ---
+            # Increased from 0.12 to 0.25 to make chords the main focus
+            return val * 0.25
 
         pad_signal = (get_chord_sample(progression[current_chord_idx], t) * vol_current)
-
-        # If we are in the transition zone, add the next chord too
         if vol_next > 0:
             pad_signal += (get_chord_sample(progression[next_chord_idx], t) * vol_next)
 
-        # 3. METALLIC CHIMES (Frequent)
-        chime_layer = 0
-        for start_sample in chime_events:
-            offset = i - start_sample
-            if 0 <= offset < 44100:  # 1 second duration
-                ct = offset / 44100
-                # FM Synthesis for "Clang" sound
-                # Carrier: 880Hz, Modulator: 220Hz
-                mod_idx = 5.0 * math.exp(-10 * ct)  # Modulation fades quickly
-                modulator = math.sin(2 * math.pi * 220 * ct) * mod_idx * 220
-                carrier = math.sin(2 * math.pi * (880 + modulator) * ct)
-
-                env = math.exp(-5 * ct)
-                chime_layer += carrier * env * 0.15
-
-        # 4. ATMOSPHERE (Drone)
+        # 2. WIND GUSTS (Background)
         delta = random.uniform(-0.05, 0.05)
         brown_val = (brown_val + delta) * 0.99
-        air_layer = brown_val * 0.1
 
-        # 5. MASTER MIX
-        signal = pad_mix = pad_signal + chime_layer + air_layer
+        # --- VOLUME CUT ---
+        # Reduced from 0.08 to 0.04 (Subtle background texture only)
+        air_layer = brown_val * 0.04
 
-        # Global Loop Fade (Seamless)
-        # Fade the very first and last 0.5s to prevent clicking at loop point
-        if t < 0.5:
-            signal *= (t / 0.5)
-        elif t > (duration - 0.5):
-            signal *= ((duration - t) / 0.5)
+        gust_strength = (math.sin(t * 0.35) + math.sin(t * 0.2)) * 0.5 + 0.5
+
+        # 3. CHIME LOGIC
+        if random.random() < (0.0001 * gust_strength ** 4):
+            for voice in chime_voices:
+                if voice['timer'] <= 0:
+                    voice['freq'] = random.choice(chime_notes)
+                    voice['freq'] *= random.uniform(0.998, 1.002)
+                    # Deep bells ring longer: 4s to 8s
+                    voice['duration'] = random.randint(176400, 352800)
+                    voice['timer'] = voice['duration']
+                    break
+
+        # Render Voices
+        chime_layer = 0
+        for voice in chime_voices:
+            if voice['timer'] > 0:
+                vt = 1.0 - (voice['timer'] / voice['duration'])
+                time_elapsed = vt * (voice['duration'] / 44100)
+
+                wave_samp = math.sin(2 * math.pi * voice['freq'] * time_elapsed)
+                # Slower decay for heavy bells
+                decay = math.exp(-0.5 * time_elapsed)
+
+                chime_layer += wave_samp * decay * (1.0 - vt) * 0.15
+                voice['timer'] -= 1
+
+        # 4. MASTER MIX
+        signal = pad_signal + air_layer + chime_layer
+
+        if t < 1.0:
+            signal *= t
+        elif t > (duration - 1.0):
+            signal *= (duration - t)
 
         signal = max(-1.0, min(1.0, signal))
-        sample = int(signal * 32767 * 0.8)
+        sample = int(signal * 32767 * 0.7)
         data.extend(struct.pack('<h', sample))
 
     return data
 
 
+def generate_dark_eyes_melody():
+    """
+    Generates 'The Eyes of Texas' in its ORIGINAL D Major (Sheet Music Accurate).
+    Use this to verify the rhythm and melody.
+    """
+    print("Synthesizing Verification: The Eyes of Texas (D Major)...")
+
+    # 1. Define Frequencies (D Major)
+    # A4, B4, C#5, D5, E5, F#5, G5
+    N_G4 = 392.00
+    N_A4 = 440.00  # Pickup / End
+    N_B4 = 493.88
+    N_D5 = 587.33  # Root
+    N_E5 = 659.25
+    N_Fsharp5 = 739.99
+
+    # 2. Define Rhythm (6/8 Time)
+    # 1 Tick = Eighth Note
+    tick = 0.22  # Slightly faster for the waltz feel
+
+    # (Frequency, Duration in Ticks)
+    melody = [
+        # Pickup
+        (N_A4, 1),  # "The" (Eighth)
+
+        # Bar 1
+        (N_D5, 2),  # "Eyes" (Quarter)
+        (N_E5, 1),  # "of"   (Eighth)
+        (N_Fsharp5, 2),  # "Tex-" (Quarter)
+        (N_D5, 1),  # "-as"  (Eighth)
+
+        # Bar 2
+        (N_B4, 2),  # "are"  (Quarter)
+        (N_A4, 1),  # "up-"  (Eighth)
+        (N_G4, 3),  # "-on"  (Dotted Quarter)
+
+        # Bar 3
+        (N_A4, 6),  # "you"  (Dotted Half)
+    ]
+
+    # Calculate length
+    total_ticks = sum(note[1] for note in melody)
+    total_seconds = (total_ticks * tick) + 4.0
+    total_samples = int(44100 * total_seconds)
+
+    master_buffer = [0.0] * total_samples
+
+    current_sample_idx = 0
+
+    for freq, duration_ticks in melody:
+        # Standard clear bell sound for verification
+        note_samples = int(44100 * 3.0)
+
+        for i in range(note_samples):
+            if current_sample_idx + i >= total_samples: break
+
+            t = i / 44100
+
+            # Bright Brass/Bell Tone
+            wave = math.sin(2 * math.pi * freq * t)
+            wave += 0.5 * math.sin(2 * math.pi * freq * 2 * t)
+
+            env = math.exp(-1.5 * t)
+
+            val = wave * env * 0.4
+            master_buffer[current_sample_idx + i] += val
+
+        current_sample_idx += int(duration_ticks * tick * 44100)
+
+    # Write
+    data = bytearray()
+    for samp in master_buffer:
+        samp = max(-1.0, min(1.0, samp))
+        int_val = int(samp * 32767)
+        data.extend(struct.pack('<h', int_val))
+
+    return data
+
+
 if __name__ == "__main__":
-    # ... regenerate SFX ...
+    # ... (Previous generations) ...
     write_wav("steam_shoot.wav", generate_steam_hiss(0.15))
     write_wav("aoe_thud.wav", generate_thud(0.4))
     write_wav("build_clang.wav", generate_clang(0.3))
     write_wav("laser_hum.wav", generate_heavy_steam(1.0))
-
-    # Generate New Ambience
     write_wav("ambience_loop.wav", generate_musical_ambience(60.0))
+
+    # --- Generate the Easter Egg ---
+    write_wav("easter_egg.wav", generate_dark_eyes_melody())
+
+    print("Done! Assets updated.")
