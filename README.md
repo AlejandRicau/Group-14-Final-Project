@@ -52,7 +52,7 @@ A procedural Tower Defense game set in the steam tunnels underneath UT Austin. B
 
 ##  Project Structure
 
-The project follows a modular architecture separating logic, visuals, and game entities.
+The game code is organized as follows for ease of access and logical grouping:
 
 ```text
 Group-14-Final-Project/
