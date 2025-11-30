@@ -181,7 +181,7 @@ GET_ENEMY_SPEED = lambda wave: 30 + (wave * 2)
 
 # 4. When should the map EXPAND?
 # Example: Expands every 5 waves (Wave 5, 10, 15...)
-SHOULD_EXPAND = lambda wave: (wave % 5 == 0)
+SHOULD_EXPAND = lambda wave: (wave % 1 == 0)
 
 # 5. When should we add a NEW SPAWN point?
 # Example: Adds a spawn every 4 waves (Wave 4, 8, 12...)

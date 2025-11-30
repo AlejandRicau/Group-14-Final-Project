@@ -9,7 +9,7 @@ class OrbShader:
     """Handles glowing circles (AOE, Goals)"""
 
     def __init__(self, window_size):
-        self.shader = Shadertoy.create_from_file(window_size, "glow_point.glsl")
+        self.shader = Shadertoy.create_from_file(window_size, "Shaders/glow_point.glsl")
 
     def render(self, object_list, camera, color=(1.0, 0.1, 0.1)):
         if not object_list: return
@@ -53,7 +53,7 @@ class BeamShader:
     """Handles SOLID glowing lines (Bullets)"""
 
     def __init__(self, window_size):
-        self.shader = Shadertoy.create_from_file(window_size, "glow_beam.glsl")
+        self.shader = Shadertoy.create_from_file(window_size, "Shaders/glow_beam.glsl")
 
     def render(self, bullet_list, camera, color=(1.0, 0.9, 0.5)):
         if not bullet_list: return
@@ -104,7 +104,7 @@ class LaserShader:
 
     def __init__(self, window_size):
         # Load the GRADIENT shader
-        self.shader = Shadertoy.create_from_file(window_size, "glow_laser.glsl")
+        self.shader = Shadertoy.create_from_file(window_size, "Shaders/glow_laser.glsl")
 
     def render(self, laser_list, camera, color=(0.4, 1.0, 0.6)):
         if not laser_list: return
@@ -146,7 +146,7 @@ class LaserShader:
 
 class SteamShader:
     def __init__(self, window_size):
-        self.shader = Shadertoy.create_from_file(window_size, "steam.glsl")
+        self.shader = Shadertoy.create_from_file(window_size, "Shaders/steam.glsl")
 
     def render(self, puff_list, camera):
         if not puff_list: return
@@ -196,6 +196,42 @@ class SteamShader:
         except Exception as e:
             print(f"Steam Error: {e}")
 
+
+class VignetteShader:
+    def __init__(self, window_size):
+        self.shader = Shadertoy.create_from_file(window_size, "Shaders/vignette.glsl")
+
+    def render(self, tower_list, camera):
+        # We render even if tower_list is empty, because we still need the base vignette!
+
+        window = arcade.get_window()
+        pixel_ratio = window.get_pixel_ratio()
+
+        flat_data = []
+
+        if tower_list:
+            for t in tower_list:
+                # Project Tower World Pos -> Screen Pixels
+                pos = camera.project((t.center_x, t.center_y))
+                if pos:
+                    flat_data.append(pos[0] * pixel_ratio)
+                    flat_data.append(pos[1] * pixel_ratio)
+
+        # Pad to 100 points (200 floats)
+        # Note: If list is empty, this creates a list of 200 zeros, which is fine.
+        count = len(flat_data) // 2
+
+        if count > 100:
+            flat_data = flat_data[:200]
+            count = 100
+        else:
+            flat_data.extend([0.0] * (200 - len(flat_data)))
+
+        self.shader.program['u_tower_count'] = count
+        self.shader.program['u_towers'] = flat_data
+
+        # Render the darkness
+        self.shader.render()
 
 class LaserEffect:
     def __init__(self, start_x, start_y, end_x, end_y):

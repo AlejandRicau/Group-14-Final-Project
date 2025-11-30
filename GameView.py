@@ -15,7 +15,7 @@ from visual_effect import *
 
 class GameView(arcade.Window):
     def __init__(self, width, height, tile_size):
-        super().__init__(width * tile_size, height * tile_size, "Map Visualizer")
+        super().__init__(width * tile_size, height * tile_size, "Tower Defense")
         arcade.set_background_color(COLOR_BACKGROUND)
 
         self.tile_size = tile_size
@@ -56,10 +56,13 @@ class GameView(arcade.Window):
         self.game_manager = GameManager()
 
         # Initialize Shaders
-        self.orb_shader = OrbShader(self.get_size())
-        self.beam_shader = BeamShader(self.get_size())  # Solid (Bullets)
-        self.laser_shader = LaserShader(self.get_size())  # Gradient (Lasers) <--- NEW
-        self.steam_shader = SteamShader(self.get_size())
+        fb_size = self.get_framebuffer_size()
+
+        self.orb_shader = OrbShader(fb_size)
+        self.beam_shader = BeamShader(fb_size)
+        self.laser_shader = LaserShader(fb_size)
+        self.steam_shader = SteamShader(fb_size)
+        self.vignette_shader = VignetteShader(fb_size)
 
         # GUI Camera
         # We use a second camera for the UI so it stays static
@@ -218,11 +221,18 @@ class GameView(arcade.Window):
     def on_draw(self):
         self.clear()
 
-        self.clear()
-
         # 1. Draw World
         self.camera.use()
         self.background_list.draw()
+
+        # Tower Glows (Behind towers)
+        self.ctx.enable(self.ctx.BLEND)
+        self.ctx.blend_func = self.ctx.SRC_ALPHA, self.ctx.ONE
+        if self.tower_list:
+            self.orb_shader.render(self.tower_list, self.camera, color=(1.0, 0.8, 0.2))
+        self.ctx.blend_func = self.ctx.SRC_ALPHA, self.ctx.ONE_MINUS_SRC_ALPHA
+
+        # Draw Objects
         self.tower_list.draw()
         self.enemy_list.draw()
         self.bar_list.draw()
@@ -231,43 +241,49 @@ class GameView(arcade.Window):
         for tower in self.tower_list:
             tower.cooldown_effect.draw()
 
-        # Prepare Lists
-        bullets = [x for x in self.visual_effect_list if isinstance(x, Bullet)]
-        steam_booms = [x for x in self.visual_effect_list if isinstance(x, SteamBoom)]
-        puffs = [x for x in self.visual_effect_list if isinstance(x, SteamPuff)]
-        lasers = [x for x in self.visual_effect_list if isinstance(x, LaserEffect)]
-
-        # --- PASS 1: STEAM (Standard Blend) ---
+        # --- PASS 1: VIGNETTE & STEAM (Standard Blend) ---
         self.ctx.enable(self.ctx.BLEND)
         self.ctx.blend_func = self.ctx.SRC_ALPHA, self.ctx.ONE_MINUS_SRC_ALPHA
+
+        # A. Vignette (Darkness)
+        # Combine light sources to punch holes in the dark
+        light_sources = []
+        if self.tower_list: light_sources.extend(self.tower_list)
+        if self.map.goals:  light_sources.extend(self.map.goals)
+        if self.map.spawns: light_sources.extend(self.map.spawns)
+
+        self.vignette_shader.render(light_sources, self.camera)
+
+        # B. Steam
+        puffs = [x for x in self.visual_effect_list if isinstance(x, SteamPuff)]
         if puffs:
             self.steam_shader.render(puffs, self.camera)
 
         # --- PASS 2: GLOWS (Additive Blend) ---
         self.ctx.blend_func = self.ctx.SRC_ALPHA, self.ctx.ONE
 
-        # A. Bullets (White/Cyan Solid Beam)
+        bullets = [x for x in self.visual_effect_list if isinstance(x, Bullet)]
+        lasers = [x for x in self.visual_effect_list if isinstance(x, LaserEffect)]
+        steam_booms = [x for x in self.visual_effect_list if isinstance(x, SteamBoom)]
+
         if bullets:
             self.beam_shader.render(bullets, self.camera, color=(0.9, 0.95, 1.0))
-
-        # B. Lasers (Green Gradient Beam)
         if lasers:
             self.laser_shader.render(lasers, self.camera, color=(0.8, 0.9, 1.0))
-
-        # C. Orbs (AOE + Goals)
         if steam_booms:
             self.orb_shader.render(steam_booms, self.camera, color=(0.6, 0.85, 1.0))
-        if self.map.goals:
-            self.orb_shader.render(self.map.goals, self.camera, color=(1.0, 0.1, 0.1))
 
-        # --- RESET BLEND ---
+        # REMOVED: Goal Square Glow
+        # The goals now just light up via the Vignette Shader (in light_sources above)
+
+        # --- RESET ---
         self.ctx.blend_func = self.ctx.SRC_ALPHA, self.ctx.ONE_MINUS_SRC_ALPHA
 
-        # 3. Draw Actual Sprites
+        # 3. Draw Actual Projectile Sprites
         for vis in self.visual_effect_list:
             vis.draw()
 
-        # ... (Draw Ghost & UI) ...
+        # 4. Draw Ghost & UI
         if self.selected_tower_type and len(self.ghost_list) > 0:
             wx, wy, _ = self.camera.unproject((self._mouse_x, self._mouse_y))
             self.ghost_list[0].position = (wx, wy)

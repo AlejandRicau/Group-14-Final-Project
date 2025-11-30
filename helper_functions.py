@@ -70,7 +70,7 @@ def distance_point_to_segment(px, py, x1, y1, x2, y2):
     return ((px - closest_x)**2 + (py - closest_y)**2)**0.5
 
 
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFilter
 
 
 def generate_build_icon():
@@ -99,3 +99,41 @@ def generate_build_icon():
     draw.rectangle([40, 22, 46, 30], fill=(160, 160, 160, 255))  # Shading
 
     return arcade.Texture(name="procedural_hammer", image=image)
+
+
+def generate_vignette(width, height):
+    # 1. Create black image
+    img = Image.new("RGBA", (width, height), (0, 0, 0, 255))
+
+    # 2. Create Mask
+    mask = Image.new("L", (width, height), 0)
+    draw = ImageDraw.Draw(mask)
+
+    # Make the clear zone slightly smaller so corners are definitely dark
+    margin_x = width * 0.15
+    margin_y = height * 0.15
+
+    draw.ellipse(
+        (margin_x, margin_y, width - margin_x, height - margin_y),
+        fill=255
+    )
+
+    # Increase blur for smoother transition
+    mask = mask.filter(ImageFilter.GaussianBlur(radius=width * 0.2))
+
+    # 3. Apply Darkness
+    pixels = mask.load()
+    for y in range(height):
+        for x in range(width):
+            val = pixels[x, y]
+
+            # --- TUNING ---
+            # Center (255) -> New Alpha 50 (Mostly Clear)
+            # Edge (0)     -> New Alpha 240 (Very Dark)
+
+            # Inverted logic: High val = Low Alpha
+            new_alpha = 240 - int(val * 0.75)
+            pixels[x, y] = new_alpha
+
+    img.putalpha(mask)
+    return arcade.Texture(name=f"vig_{width}_{height}", image=img)
