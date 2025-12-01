@@ -73,34 +73,6 @@ def distance_point_to_segment(px, py, x1, y1, x2, y2):
 from PIL import Image, ImageDraw, ImageFilter
 
 
-def generate_build_icon():
-    """Generates a 64x64 texture of a hammer."""
-    size = 64
-    image = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(image)
-
-    # Colors
-    handle_color = (139, 69, 19, 255)  # Brown
-    head_color = (192, 192, 192, 255)  # Silver
-
-    # 1. Draw Handle (Diagonal)
-    # Drawing a thick line from bottom-left to top-right
-    draw.line([(15, 55), (45, 25)], fill=handle_color, width=8)
-
-    # 2. Draw Head (Perpendicular block)
-    # A rectangle rotated 45 degrees is hard in raw PIL without complexity,
-    # so we will draw a simple vertical hammer for clarity, or a blocky diagonal one.
-
-    # Let's draw a simple upright hammer for maximum readability
-    # Handle
-    draw.rectangle([28, 20, 36, 60], fill=handle_color)
-    # Head
-    draw.rectangle([16, 20, 48, 32], fill=head_color)  # Main block
-    draw.rectangle([40, 22, 46, 30], fill=(160, 160, 160, 255))  # Shading
-
-    return arcade.Texture(name="procedural_hammer", image=image)
-
-
 def make_ring_texture(diameter, color, thickness=3):
     """
     Generates a transparent texture with a colored ring border.

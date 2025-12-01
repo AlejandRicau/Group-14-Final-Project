@@ -7,6 +7,8 @@ import random
 from src.managers.game_manager import GameManager
 from src.managers.wave_manager import WaveManager
 from src.utils.visual_effect import *
+from src.utils.visual_effect import Bullet, LaserEffect, SteamBoom, SteamPuff
+from src.utils.shader_handler import OrbShader, BeamShader, LaserShader, SteamShader, VignetteShader
 from src.managers.sound_manager import SoundManager
 
 
@@ -197,13 +199,7 @@ class GameView(arcade.View):
         self.tower_panel = self.tower_panel.with_background(color=(0, 0, 0, 180))
 
         # B. The Hammer Button (Texture Button)
-        # We load a hammer texture (using a built-in key texture as a placeholder if hammer isn't available,
-        # or you can use :resources:images/items/hammer.png if available, but let's use a generic tool icon)
-
-        # NOTE: Arcade resources doesn't have a "Hammer" icon specifically in the default set.
-        # We will use 'wrench.png' from items, or you can providing your own path.
-        # Let's use the 'wrench' as the build tool for now.
-        hammer_texture = generate_build_icon()
+        hammer_texture = arcade.load_texture("assets/images/ui/icon_hammer.png")
 
         # Create a Texture Button
         toggle_btn = arcade.gui.UITextureButton(
