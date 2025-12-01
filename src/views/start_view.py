@@ -1,20 +1,33 @@
 import arcade
 from src.constants import *
+from src.managers.game_manager import GameManager
 
 class StartView(arcade.View):
     def __init__(self):
         super().__init__()
-
-        # Create a Camera for the UI
         self.camera = arcade.camera.Camera2D()
 
-        # --- PERFORMANCE FIX: Create Text objects once ---
+        # Load High Score
+        gm = GameManager()
+        high_score = gm.load_high_score()
+
         self.title_text = arcade.Text(
             "STEAM TUNNELS DEFENSE",
             self.window.width / 2,
             self.window.height / 2 + 50,
             arcade.color.GOLD,
             font_size=40,
+            anchor_x="center",
+            font_name="Kenney Future"
+        )
+
+        # --- UPDATED TEXT ---
+        self.score_text = arcade.Text(
+            f"Record: Wave {high_score}",
+            self.window.width / 2,
+            self.window.height / 2 + 10,
+            arcade.color.CYAN,
+            font_size=18,
             anchor_x="center",
             font_name="Kenney Future"
         )
@@ -40,6 +53,7 @@ class StartView(arcade.View):
         # --- PERFORMANCE FIX: Draw the pre-generated objects ---
         self.title_text.draw()
         self.instruction_text.draw()
+        self.score_text.draw()
 
     def on_mouse_press(self, _x, _y, _button, _modifiers):
         """If the user presses the mouse button, start the game."""
