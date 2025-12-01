@@ -5,7 +5,7 @@ from src.ui.indicator_bar import IndicatorBar
 
 
 class Enemy(arcade.Sprite):
-    def __init__(self, path, game_manager, bar_list, health=100, damage=1, speed=100, reward=10):
+    def __init__(self, path, game_manager, bar_list, health=BASE_ENEMY_HEALTH, damage=ENEMY_PENALTY, speed=BASE_ENEMY_SPEED, reward=ENEMY_REWARD):
         # 1. Load Texture
         texture = arcade.load_texture("assets/images/characters/zombie_idle.png")
         desired_size = TILE_SIZE * 0.8

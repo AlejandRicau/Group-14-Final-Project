@@ -11,7 +11,7 @@ STARTING_MONEY = 100
 STARTING_LIVES = 20
 
 TOWER_COST = 50
-ENEMY_REWARD = 15  # Money gained when killing an enemy
+ENEMY_REWARD = 5  # Money gained when killing an enemy
 ENEMY_PENALTY = 1  # Lives lost when enemy reaches base
 
 # Colors
