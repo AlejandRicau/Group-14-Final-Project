@@ -13,16 +13,28 @@ class SoundManager:
         self.sounds = {}
 
         # Load sounds into memory
+
+        # tower sounds
         self.load_sound("base_shoot", "steam_shoot.wav")
         self.load_sound("aoe_shoot", "aoe_thud.wav")
         self.load_sound("laser_shoot", "laser_hum.wav")
         self.load_sound("build", "build_clang.wav")
-        self.load_sound("bg_ambiance", "ambience_loop.wav")
+
+        # UI sounds
         self.load_sound("easter_egg", "easter_egg.wav")
         self.load_sound("ui_menu", "ui_menu.wav")
         self.load_sound("ui_close", "ui_menu_close.wav")
         self.load_sound("ui_select", "ui_click.wav")
         self.load_sound("ui_error", "ui_error.wav")
+
+        # Time Control Sounds
+        self.load_sound("ui_pause", "ui_pause.wav")
+        self.load_sound("ui_unpause", "ui_unpause.wav")
+        self.load_sound("ui_speed_up", "ui_speed_up.wav")
+        self.load_sound("ui_slow_down", "ui_slow_down.wav")
+
+        # Ambiance Sounds
+        self.load_sound("bg_ambiance", "ambience_loop.wav")
 
 
         # Volume settings

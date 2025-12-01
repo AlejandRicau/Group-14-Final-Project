@@ -50,6 +50,21 @@ class GameView(arcade.View):
         self.game_speed = 1.0
         self.paused = False
 
+        # Load Control Textures
+        # Note: 'icon_play.png' shows when we are PAUSED (to unpause)
+        # 'icon_pause.png' shows when we are PLAYING (to pause)
+        ui_path = "assets/images/ui/"
+        self.tex_play = arcade.load_texture(ui_path + "icon_play.png")
+        self.tex_pause = arcade.load_texture(ui_path + "icon_pause.png")
+
+        # Note: 'icon_2x.png' shows when we are at 1x (Click to speed up)
+        # 'icon_1x.png' shows when we are at 2x (Click to slow down)
+        self.tex_1x = arcade.load_texture(ui_path + "icon_1x.png")
+        self.tex_2x = arcade.load_texture(ui_path + "icon_2x.png")
+
+        self.btn_pause = None
+        self.btn_speed = None
+
 
         # Sprite Lists
         self.camera = arcade.camera.Camera2D()
@@ -214,6 +229,82 @@ class GameView(arcade.View):
 
         # Anchor Button to Bottom Right
         self.root_layout.add(toggle_btn, anchor_x="right", anchor_y="bottom", align_x=-20, align_y=20)
+
+        # ==================================================
+        # 3. GAME CONTROLS (Top Right)
+        # ==================================================
+
+        # Create Pause Button (Starts showing PAUSE icon because we are playing)
+        self.btn_pause = arcade.gui.UITextureButton(texture=self.tex_pause, width=48, height=48)
+
+        @self.btn_pause.event("on_click")
+        def on_click_pause(event):
+            self.toggle_pause()
+
+        # Create Speed Button (Starts showing 2X icon because we are at 1x)
+        self.btn_speed = arcade.gui.UITextureButton(texture=self.tex_2x, width=48, height=48)
+
+        @self.btn_speed.event("on_click")
+        def on_click_speed(event):
+            self.toggle_speed()
+
+        # Layout for controls
+        controls_box = arcade.gui.UIBoxLayout(vertical=False, space_between=10)
+        controls_box.add(self.btn_pause)
+        controls_box.add(self.btn_speed)
+
+        # Anchor to Top Right (with padding to not hit the Sidebar toggle)
+        self.root_layout.add(controls_box, anchor_x="right", anchor_y="top", align_x=-20, align_y=-10)
+
+    def toggle_pause(self):
+        self.paused = not self.paused
+
+        # Play Sound based on result
+        if self.paused:
+            self.sound_manager.play_sound("ui_pause", volume=0.6)
+        else:
+            self.sound_manager.play_sound("ui_unpause", volume=0.6)
+
+        self.sync_ui_states()
+
+    def toggle_speed(self):
+        if self.game_speed == 1.0:
+            self.game_speed = 2.0
+            self.sound_manager.play_sound("ui_speed_up", volume=0.5)
+        else:
+            self.game_speed = 1.0
+            self.sound_manager.play_sound("ui_slow_down", volume=0.5)
+
+        self.sync_ui_states()
+
+    def sync_ui_states(self):
+        """Updates button textures to match game state."""
+        # 1. Determine the correct textures based on state
+        if self.paused:
+            target_tex_pause = self.tex_play
+        else:
+            target_tex_pause = self.tex_pause
+
+        if self.game_speed == 1.0:
+            target_tex_speed = self.tex_2x
+        else:
+            target_tex_speed = self.tex_1x
+
+            # 2. Update PAUSE Button
+        self.btn_pause.texture = target_tex_pause
+        self.btn_pause.texture_hovered = target_tex_pause
+        self.btn_pause.texture_pressed = target_tex_pause
+
+        # --- FIX: Force the UI to clear the old pixels ---
+        self.btn_pause.trigger_full_render()
+
+        # 3. Update SPEED Button
+        self.btn_speed.texture = target_tex_speed
+        self.btn_speed.texture_hovered = target_tex_speed
+        self.btn_speed.texture_pressed = target_tex_speed
+
+        # --- FIX: Force the UI to clear the old pixels ---
+        self.btn_speed.trigger_full_render()
 
     def update_ui_values(self):
         """Updates the text of the labels."""
@@ -444,16 +535,13 @@ class GameView(arcade.View):
 
         if symbol == arcade.key.ESCAPE:
             self.window.close()
-        # P to Pause
-        if symbol == arcade.key.P:
-            self.paused = not self.paused
+        # Toggle Pause (P)
+        elif symbol == arcade.key.P:
+            self.toggle_pause()
 
-        # F to Toggle Fast Forward (2x Speed)
+        # Toggle Speed (F)
         elif symbol == arcade.key.F:
-            if self.game_speed == 1.0:
-                self.game_speed = 2.0
-            else:
-                self.game_speed = 1.0
+            self.toggle_speed()
 
     def on_key_release(self, symbol, modifiers):
         if symbol in self.keys_held:

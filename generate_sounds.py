@@ -397,6 +397,74 @@ def generate_servo_slide_down(duration=0.4):
         data.extend(struct.pack('<h', int(signal * 32767)))
     return data
 
+
+def generate_ui_pause(duration=0.25):
+    """'Power Down' effect: Sine wave dropping pitch rapidly."""
+    data = bytearray()
+    samples = int(44100 * duration)
+    for i in range(samples):
+        t = i / 44100
+        # Pitch drop: 600Hz -> 50Hz
+        freq = 600 * math.exp(-10 * t)
+        val = math.sin(2 * math.pi * freq * t)
+        # Fade out
+        env = 1.0 - (i / samples)
+        sample = int(val * env * 32767 * 0.5)
+        data.extend(struct.pack('<h', sample))
+    return data
+
+
+def generate_ui_unpause(duration=0.25):
+    """'Power Up' effect: Sine wave rising pitch rapidly."""
+    data = bytearray()
+    samples = int(44100 * duration)
+    for i in range(samples):
+        t = i / 44100
+        # Pitch rise: 100Hz -> 600Hz
+        freq = 100 + (500 * (i / samples) ** 2)
+        val = math.sin(2 * math.pi * freq * t)
+        # Fade in/out
+        env = math.sin(t / duration * 3.14)
+        sample = int(val * env * 32767 * 0.5)
+        data.extend(struct.pack('<h', sample))
+    return data
+
+
+def generate_ui_speed_up(duration=0.2):
+    """High pitched 'Warp' sound."""
+    data = bytearray()
+    samples = int(44100 * duration)
+    for i in range(samples):
+        t = i / 44100
+        # Slide 400Hz -> 1200Hz
+        freq = 400 + (800 * (i / samples))
+        # Square-ish wave for "digital" feel
+        val = 0.5 * math.sin(2 * math.pi * freq * t)
+        val += 0.25 * math.sin(2 * math.pi * (freq * 2) * t)
+
+        env = 1.0 - (i / samples)
+        sample = int(val * env * 32767 * 0.4)
+        data.extend(struct.pack('<h', sample))
+    return data
+
+
+def generate_ui_slow_down(duration=0.2):
+    """Lower pitched 'Brake' sound."""
+    data = bytearray()
+    samples = int(44100 * duration)
+    for i in range(samples):
+        t = i / 44100
+        # Slide 1200Hz -> 400Hz
+        freq = 1200 - (800 * (i / samples))
+
+        val = 0.5 * math.sin(2 * math.pi * freq * t)
+        val += 0.25 * math.sin(2 * math.pi * (freq * 2) * t)
+
+        env = 1.0 - (i / samples)
+        sample = int(val * env * 32767 * 0.4)
+        data.extend(struct.pack('<h', sample))
+    return data
+
 if __name__ == "__main__":
     write_wav("steam_shoot.wav", generate_steam_hiss(0.15))
     write_wav("aoe_thud.wav", generate_thud(0.4))
@@ -408,5 +476,9 @@ if __name__ == "__main__":
     write_wav("ui_click.wav", generate_switch_click(0.05))
     write_wav("ui_error.wav", generate_error_buzz(0.3))
     write_wav("ui_menu_close.wav", generate_servo_slide_down(0.3))
+    write_wav("ui_pause.wav", generate_ui_pause())
+    write_wav("ui_unpause.wav", generate_ui_unpause())
+    write_wav("ui_speed_up.wav", generate_ui_speed_up())
+    write_wav("ui_slow_down.wav", generate_ui_slow_down())
 
     print("Done! Assets updated.")
