@@ -1,7 +1,18 @@
-import arcade
-import sys
 import os
-from src.constants import SCREEN_WIDTH, SCREEN_HEIGHT
+import sys
+
+# --- WINDOWS DPI FIX (Keep this for your teammate!) ---
+if os.name == 'nt':
+    import ctypes
+
+    try:
+        ctypes.windll.user32.SetProcessDPIAware()
+    except AttributeError:
+        pass
+# ----------------------------------------------------
+
+import arcade
+from src.constants import SCREEN_WIDTH, SCREEN_HEIGHT, TILE_SIZE
 from src.views.start_view import StartView
 
 
@@ -9,26 +20,24 @@ def main():
     """ Main entry point for the game """
 
     # --- PYINSTALLER SETUP ---
+    # Ensures assets are found when bundled as an exe/app
     if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
         os.chdir(sys._MEIPASS)
     # -------------------------
 
-    # 1. Create the Window FIRST
-    # We do not pass tile_size/grid here, just pixel dimensions
+    # 1. CREATE THE WINDOW FIRST
+    # We must create the window before any Views can be initialized.
     window = arcade.Window(SCREEN_WIDTH, SCREEN_HEIGHT, "Steam Tunnels Defense")
-
-    # 2. Center it
     window.center_window()
 
-    # 3. Create the View
-    # The View's __init__ will call arcade.get_window(), which now works
-    # because 'window' exists!
+    # 2. CREATE THE START VIEW
+    # Now that the window exists, we can create views.
     start_view = StartView()
 
-    # 4. Show the View
+    # 3. SHOW THE VIEW
     window.show_view(start_view)
 
-    # 5. Run
+    # 4. RUN
     arcade.run()
 
 
