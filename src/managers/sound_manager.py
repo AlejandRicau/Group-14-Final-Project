@@ -36,6 +36,9 @@ class SoundManager:
         # Ambiance Sounds
         self.load_sound("bg_ambiance", "ambience_loop.wav")
 
+        # Enemy sounds
+        self.load_sound("player_hurt", "player_hurt.wav")
+
 
         # Volume settings
         self.master_volume = 0.5

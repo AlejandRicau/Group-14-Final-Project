@@ -471,6 +471,34 @@ def generate_ui_slow_down(duration=0.2):
         data.extend(struct.pack('<h', sample))
     return data
 
+
+def generate_player_hurt(duration=0.4):
+    """
+    Generates a heavy 'Hull Breach' impact sound.
+    Low frequency thud + white noise burst.
+    """
+    data = bytearray()
+    samples = int(44100 * duration)
+    for i in range(samples):
+        t = i / 44100
+
+        # 1. Impact (Low Sine drop)
+        freq = 100 * math.exp(-15 * t)
+        impact = math.sin(2 * math.pi * freq * t)
+
+        # 2. Crunch (Noise)
+        noise = random.uniform(-1, 1) * math.exp(-10 * t)
+
+        # 3. Alarm undertone (Square wave)
+        alarm = 0.0
+        if t > 0.1:  # Delayed alarm
+            alarm = 0.3 if math.sin(2 * math.pi * 400 * t) > 0 else -0.3
+            alarm *= math.exp(-5 * (t - 0.1))
+
+        signal = (impact * 0.6) + (noise * 0.3) + (alarm * 0.2)
+        data.extend(struct.pack('<h', int(signal * 32767)))
+    return data
+
 if __name__ == "__main__":
     write_wav("steam_shoot.wav", generate_steam_hiss(0.15))
     write_wav("aoe_thud.wav", generate_thud(0.4))
@@ -486,5 +514,6 @@ if __name__ == "__main__":
     write_wav("ui_unpause.wav", generate_ui_unpause())
     write_wav("ui_speed_up.wav", generate_ui_speed_up())
     write_wav("ui_slow_down.wav", generate_ui_slow_down())
+    write_wav("player_hurt.wav", generate_player_hurt())
 
     print("Done! Assets updated.")

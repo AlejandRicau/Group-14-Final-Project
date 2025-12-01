@@ -10,6 +10,7 @@ from src.utils.visual_effect import *
 from src.utils.visual_effect import Bullet, LaserEffect, SteamBoom, SteamPuff
 from src.utils.shader_handler import OrbShader, BeamShader, LaserShader, SteamShader, VignetteShader
 from src.managers.sound_manager import SoundManager
+from src.ui.feedback import FloatingMessage
 
 
 class GameView(arcade.View):
@@ -47,10 +48,17 @@ class GameView(arcade.View):
         self.lives_label = None
         self.wave_label = None
         self.ui_layout = None
+        self.current_lives_tracker = STARTING_LIVES
 
         # Speed Control
         self.game_speed = 1.0
         self.paused = False
+
+        # Feedback Systems
+        self.damage_flash_alpha = 0.0  # 0 to 255
+        self.ui_messages = []  # List for floating texts
+        self.icon_coin = arcade.load_texture("assets/images/items/coinGold.png")
+        self.icon_lives = arcade.load_texture("assets/images/items/gemRed.png")
 
         # Load Control Textures
         # Note: 'icon_play.png' shows when we are PAUSED (to unpause)
@@ -128,7 +136,7 @@ class GameView(arcade.View):
         # Helper: Tighter spacing for compact look
         def create_stat_group(icon, text, color):
             # Reduced icon size from 24 to 16
-            img = arcade.gui.UIImage(texture=icon, width=16, height=16)
+            img = arcade.gui.UIImage(texture=icon, width=32, height=32)
             lbl = arcade.gui.UILabel(
                 text=text,
                 font_size=14,  # Slightly smaller font
@@ -320,6 +328,31 @@ class GameView(arcade.View):
             # Use this method instead of .label.color
             self.wave_label.update_font(font_color=arcade.color.CYAN)
 
+    def show_message(self, text, x, y, color, size=14, icon=None):
+        """Spawns a floating UI message."""
+        msg = FloatingMessage(text, x, y, color, font_size=size, icon_texture=icon)
+        self.ui_messages.append(msg)
+
+    def trigger_damage_effect(self):
+        """Plays sound and flashes screen red."""
+        self.sound_manager.play_sound("player_hurt", volume=0.8)
+        self.damage_flash_alpha = 150.0  # Start bright red
+
+        # Show text near Lives UI (Top Center-Right approx)
+        self.show_message("-1", self.window.width / 2, self.window.height - 60, arcade.color.RED, size=10,icon=self.icon_lives)
+
+    def show_money_change(self, amount, x, y):
+        """Visual for gaining/spending money with Icon."""
+        if amount > 0:
+            text = f"+{amount}"
+            color = arcade.color.GOLD
+        else:
+            text = f"-{abs(amount)}"
+            color = arcade.color.GOLD
+
+        # Pass the coin texture
+        self.show_message(text, x, y, color, size=16, icon=self.icon_coin)
+
     def on_draw(self):
         self.clear()
 
@@ -384,6 +417,20 @@ class GameView(arcade.View):
         for vis in self.visual_effect_list:
             vis.draw()
 
+        # --- NEW: Damage Flash (Red Overlay) ---
+        if self.damage_flash_alpha > 0:
+            # Arcade 3.0 requires a Rect object for arguments
+            # XYWH = Center X, Center Y, Width, Height
+            rect = arcade.XYWH(
+                self.window.width / 2,
+                self.window.height / 2,
+                self.window.width,
+                self.window.height
+            )
+            color = (255, 0, 0, int(self.damage_flash_alpha))
+
+            arcade.draw_rect_filled(rect, color)
+
         # 4. Draw Ghost & UI
         if self.selected_tower_type and len(self.ghost_list) > 0:
             wx, wy, _ = self.camera.unproject((self.window._mouse_x, self.window._mouse_y))
@@ -391,6 +438,10 @@ class GameView(arcade.View):
             self.ghost_list.draw()
 
         self.ui_manager.draw()
+
+        self.gui_camera.use()
+        for msg in self.ui_messages:
+            msg.draw()
 
     def create_ghost_tower(self, tower_type):
         """Creates a semi-transparent sprite for placement preview."""
@@ -422,6 +473,10 @@ class GameView(arcade.View):
         # Update all enemies
         self.enemy_list.update(effective_delta)
 
+        if self.game_manager.lives < self.current_lives_tracker:
+            self.trigger_damage_effect()
+            self.current_lives_tracker = self.game_manager.lives
+
         # Update all towers
         self.tower_list.update(effective_delta)
 
@@ -439,6 +494,17 @@ class GameView(arcade.View):
         # Update UI Values
         self.wave_manager.update(effective_delta)
         self.update_ui_values()
+
+        # Update Flash
+        if self.damage_flash_alpha > 0:
+            self.damage_flash_alpha -= 300 * delta_time  # Fade out speed
+            if self.damage_flash_alpha < 0: self.damage_flash_alpha = 0
+
+        # Update Messages
+        # Copy list slice [:] to modify while iterating
+        for msg in self.ui_messages[:]:
+            if msg.update(delta_time):
+                self.ui_messages.remove(msg)
 
         #  Check Game Over Condition
         if self.game_manager.lives <= 0:
@@ -496,33 +562,30 @@ class GameView(arcade.View):
                     print(f"Toggled range for tower at {clicked_tile.grid_pos}")
 
     def try_place_tower(self, tile, t_type="base"):
-        """Returns True if placement successful, False otherwise."""
+        # Get mouse coords for the message location
+        mx, my = self.window._mouse_x, self.window._mouse_y
 
-        # 1. Check if occupied
         if tile.tower:
-            print("Space occupied!")
-            self.sound_manager.play_sound("ui_error", volume=0.8)
+            self.sound_manager.play_sound("ui_error", volume=0.6)
+            self.show_message("Occupied!", mx, my + 20, arcade.color.RED)
             return False
 
-        # 2. Check Affordability
         if not self.game_manager.can_afford(TOWER_COST):
-            print("Not enough money!")
-            self.sound_manager.play_sound("ui_error", volume=0.8)
+            self.sound_manager.play_sound("ui_error", volume=0.6)
+            self.show_message("Need Money!", mx, my + 20, arcade.color.RED)
             return False
 
-        # 3. Check Validity (Must be near path)
         if not tile.is_valid_tower_location(self.map):
-            print("Invalid location!")
-            self.sound_manager.play_sound("ui_error", volume=0.8)
+            self.sound_manager.play_sound("ui_error", volume=0.6)
+            self.show_message("Must be near path!", mx, my + 20, arcade.color.RED)
             return False
 
-        # 4. Success!
+        # Success
         self.add_tower(tile, t_type)
         self.game_manager.spend_money(TOWER_COST)
-        print(f"Tower placed! Remaining Money: {self.game_manager.money}")
-
-        #  Play Sound
         self.sound_manager.play_sound("build")
+        # Show money spent near top bar or mouse? Mouse is good feedback.
+        self.show_money_change(-TOWER_COST, mx, my + 20)
 
         return True
 
