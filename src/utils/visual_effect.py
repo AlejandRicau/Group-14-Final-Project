@@ -19,6 +19,16 @@ PROJECT_ROOT = CURRENT_FILE_DIR.parent.parent
 SHADER_DIR = PROJECT_ROOT / "assets" / "shaders"
 # ==========================================
 
+def get_robust_pixel_ratio(window):
+    """
+    Calculates the true pixel ratio by comparing Framebuffer to Window size.
+    Fixes issues where get_pixel_ratio() returns 1.0 on High-DPI screens.
+    """
+    width, height = window.get_size()
+    fb_width, fb_height = window.get_framebuffer_size()
+    if width == 0: return 1.0 # Safety
+    return fb_width / width
+
 
 class OrbShader:
     """Handles glowing circles (AOE, Goals)"""
@@ -31,7 +41,7 @@ class OrbShader:
         if not object_list: return
 
         window = arcade.get_window()
-        pixel_ratio = window.get_pixel_ratio()
+        pixel_ratio = get_robust_pixel_ratio(window)
 
         flat_data = []
         for p in object_list:
@@ -76,7 +86,7 @@ class BeamShader:
         if not bullet_list: return
 
         window = arcade.get_window()
-        pixel_ratio = window.get_pixel_ratio()
+        pixel_ratio = get_robust_pixel_ratio(window)
 
         flat_data = []
         for b in bullet_list:
@@ -127,7 +137,7 @@ class LaserShader:
         if not laser_list: return
 
         window = arcade.get_window()
-        pixel_ratio = window.get_pixel_ratio()
+        pixel_ratio = get_robust_pixel_ratio(window)
 
         flat_data = []
         for l in laser_list:
@@ -170,9 +180,7 @@ class SteamShader:
         if not puff_list: return
 
         window = arcade.get_window()
-        width, height = window.get_size()
-        fb_width, fb_height = window.get_framebuffer_size()
-        pixel_ratio = fb_width / width
+        pixel_ratio = get_robust_pixel_ratio(window)
 
         # Flat list of 3 floats per puff: [x, y, radius]
         flat_data = []
@@ -224,7 +232,7 @@ class VignetteShader:
         # We render even if tower_list is empty, because we still need the base vignette!
 
         window = arcade.get_window()
-        pixel_ratio = window.get_pixel_ratio()
+        pixel_ratio = get_robust_pixel_ratio(window)
 
         flat_data = []
 

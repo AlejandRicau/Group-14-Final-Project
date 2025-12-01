@@ -107,48 +107,57 @@ def generate_heavy_steam(duration=1.0):  # Increased to 1.0 second
     return data
 
 
-def generate_musical_ambience(duration=60.0):
+def generate_musical_ambience(duration=120.0):
     """
-    Generates a Sequenced Dark Ambient Track.
-    - Chimes: Deep Octave (E4-E5) for a heavy iron bell sound.
-    - Mix: Melodic pads are dominant, wind noise is subtle.
+    Generates a Seamlessly Looping Dark Ambient Track.
+    - Duration: 120 seconds (2 minutes) for variety.
+    - Seamless: Reverb tails wrap around from end to start.
+    - Music: Extended 8-bar progression.
     """
+    # We generate slightly MORE audio than needed to handle the wrap-around tail
+    tail_duration = 5.0
+    total_duration = duration + tail_duration
+    samples_count = int(44100 * total_duration)
+    loop_point = int(44100 * duration)
+
     data = bytearray()
-    samples_count = int(44100 * duration)
 
-    # --- MUSICAL STRUCTURE (Pads) ---
-    chord_1 = [82.41, 123.47, 164.81]  # E minor
-    chord_2 = [65.41, 98.00, 130.81]  # C Major
-    chord_3 = [55.00, 110.00, 164.81]  # A Minor
-    chord_4 = [87.31, 130.81, 174.61]  # F Major
-    progression = [chord_1, chord_2, chord_3, chord_4]
-    chord_duration = duration / 4.0
+    # --- MUSICAL STRUCTURE (Extended) ---
+    # 8-Chord Progression to reduce repetition:
+    # Em -> C -> Am -> F -> Em -> G -> Bm -> D#dim
+    c_Em = [82.41, 123.47, 164.81]
+    c_C = [65.41, 98.00, 130.81]
+    c_Am = [55.00, 110.00, 164.81]
+    c_F = [87.31, 130.81, 174.61]
+    c_G = [98.00, 146.83, 196.00]  # G Major (Hope)
+    c_Bm = [61.74, 123.47, 185.00]  # B Minor (Dark)
+    c_DS = [77.78, 123.47, 155.56]  # D# Diminished (Tension)
 
-    # --- WIND CHIME SETUP (E Harmonic Minor - DEEP Octave) ---
-    # Dropped another octave. Range: E4 to E5.
-    chime_notes = [
-        329.63,  # E4 (Root)
-        392.00,  # G4 (Min 3rd)
-        493.88,  # B4 (5th)
-        523.25,  # C5 (Min 6th - The "Ghostly" note)
-        622.25,  # D#5 (Maj 7th - Tension)
-        659.25  # E5 (High Root)
-    ]
+    progression = [c_Em, c_C, c_Am, c_F, c_Em, c_G, c_Bm, c_DS]
+    chord_duration = duration / 8.0  # 15s per chord
 
+    # --- CHIME NOTES (E Harmonic Minor - Deep) ---
+    chime_notes = [329.63, 392.00, 493.88, 523.25, 622.25, 659.25]
     chime_voices = [{'timer': 0, 'freq': 0, 'duration': 0} for _ in range(3)]
 
-    print(f"Synthesizing {duration}s Atmosphere (Melodic Mix)...")
+    print(f"Synthesizing {duration}s Seamless Atmosphere...")
 
-    # State Variables
+    # Intermediate buffer (Float) to handle mixing before int conversion
+    mix_buffer = [0.0] * samples_count
+
+    # State
     brown_val = 0.0
 
     for i in range(samples_count):
         t = i / 44100
 
-        # 1. CHORD SEQUENCER
-        current_chord_idx = int(t / chord_duration) % 4
-        next_chord_idx = (current_chord_idx + 1) % 4
-        local_t = (t % chord_duration) / chord_duration
+        # 1. SEQUENCER
+        # We wrap the index using modulo so the tail plays the start of the loop
+        loop_t = t % duration
+
+        current_chord_idx = int(loop_t / chord_duration) % 8
+        next_chord_idx = (current_chord_idx + 1) % 8
+        local_t = (loop_t % chord_duration) / chord_duration
 
         vol_current = 1.0
         if local_t > 0.8: vol_current = (1.0 - local_t) / 0.2
@@ -161,61 +170,58 @@ def generate_musical_ambience(duration=60.0):
                 osc = math.sin(2 * math.pi * freq * time_val)
                 lfo = math.sin(time_val * (0.5 + idx * 0.1)) * 0.2 + 0.8
                 val += osc * 0.5 * lfo
-
-            # --- VOLUME BOOST ---
-            # Increased from 0.12 to 0.25 to make chords the main focus
             return val * 0.25
 
         pad_signal = (get_chord_sample(progression[current_chord_idx], t) * vol_current)
         if vol_next > 0:
             pad_signal += (get_chord_sample(progression[next_chord_idx], t) * vol_next)
 
-        # 2. WIND GUSTS (Background)
+        # 2. WIND (Continuous)
         delta = random.uniform(-0.05, 0.05)
         brown_val = (brown_val + delta) * 0.99
-
-        # --- VOLUME CUT ---
-        # Reduced from 0.08 to 0.04 (Subtle background texture only)
         air_layer = brown_val * 0.04
-
         gust_strength = (math.sin(t * 0.35) + math.sin(t * 0.2)) * 0.5 + 0.5
 
-        # 3. CHIME LOGIC
+        # 3. CHIMES
         if random.random() < (0.0001 * gust_strength ** 4):
             for voice in chime_voices:
                 if voice['timer'] <= 0:
                     voice['freq'] = random.choice(chime_notes)
                     voice['freq'] *= random.uniform(0.998, 1.002)
-                    # Deep bells ring longer: 4s to 8s
                     voice['duration'] = random.randint(176400, 352800)
                     voice['timer'] = voice['duration']
                     break
 
-        # Render Voices
         chime_layer = 0
         for voice in chime_voices:
             if voice['timer'] > 0:
                 vt = 1.0 - (voice['timer'] / voice['duration'])
                 time_elapsed = vt * (voice['duration'] / 44100)
-
                 wave_samp = math.sin(2 * math.pi * voice['freq'] * time_elapsed)
-                # Slower decay for heavy bells
                 decay = math.exp(-0.5 * time_elapsed)
-
                 chime_layer += wave_samp * decay * (1.0 - vt) * 0.15
                 voice['timer'] -= 1
 
-        # 4. MASTER MIX
-        signal = pad_signal + air_layer + chime_layer
+        # Store float sample
+        mix_buffer[i] = pad_signal + air_layer + chime_layer
 
-        if t < 1.0:
-            signal *= t
-        elif t > (duration - 1.0):
-            signal *= (duration - t)
+    # --- WRAP AROUND MIXING ---
+    # Take the 'Tail' (audio past the loop point) and add it to the 'Head' (start)
+    # This makes the reverb/release of the last chord blend into the first chord.
 
-        signal = max(-1.0, min(1.0, signal))
-        sample = int(signal * 32767 * 0.7)
-        data.extend(struct.pack('<h', sample))
+    final_buffer = mix_buffer[:loop_point]  # Truncate to exact duration
+
+    for i in range(int(44100 * tail_duration)):
+        if loop_point + i < len(mix_buffer):
+            # Add the tail to the start
+            if i < len(final_buffer):
+                final_buffer[i] += mix_buffer[loop_point + i]
+
+    # Write Final WAV
+    for samp in final_buffer:
+        samp = max(-1.0, min(1.0, samp))
+        int_val = int(samp * 32767 * 0.7)
+        data.extend(struct.pack('<h', int_val))
 
     return data
 
@@ -470,7 +476,7 @@ if __name__ == "__main__":
     write_wav("aoe_thud.wav", generate_thud(0.4))
     write_wav("build_clang.wav", generate_clang(0.3))
     write_wav("laser_hum.wav", generate_heavy_steam(1.0))
-    # write_wav("ambience_loop.wav", generate_musical_ambience(60.0))
+    write_wav("ambience_loop.wav", generate_musical_ambience(120.0))
     write_wav("easter_egg.wav", generate_dark_eyes_melody())
     write_wav("ui_menu.wav", generate_servo_slide(0.3))
     write_wav("ui_click.wav", generate_switch_click(0.05))
