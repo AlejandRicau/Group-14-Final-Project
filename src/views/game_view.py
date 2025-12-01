@@ -46,6 +46,10 @@ class GameView(arcade.View):
         self.wave_label = None
         self.ui_layout = None
 
+        # Speed Control
+        self.game_speed = 1.0
+        self.paused = False
+
 
         # Sprite Lists
         self.camera = arcade.camera.Camera2D()
@@ -72,6 +76,7 @@ class GameView(arcade.View):
 
         # GUI Camera
         self.gui_camera = arcade.camera.Camera2D()
+
 
         # Initial build
         if self.map.spawns and self.map.goals:
@@ -320,25 +325,32 @@ class GameView(arcade.View):
         self.ghost_list.append(self.ghost_sprite)
 
     def on_update(self, delta_time: float):
+        # Check for a paused game.
+        if self.paused:
+            return
+
+        # for speeding up game.
+        effective_delta = delta_time * self.game_speed
+
         # Update all enemies
-        self.enemy_list.update()
+        self.enemy_list.update(effective_delta)
 
         # Update all towers
-        self.tower_list.update()
+        self.tower_list.update(effective_delta)
 
         # Update tower detection
         for tower in self.tower_list:
             tower.acquire_target(self.enemy_list)
-            tower.attack_update(delta_time, self.visual_effect_list, self.sound_manager)
+            tower.attack_update(effective_delta, self.visual_effect_list, self.sound_manager)
 
         # Update visual effects
         for vis in self.visual_effect_list[:]:
-            vis.update(delta_time)
+            vis.update(effective_delta)
             if vis.can_be_removed:
                 self.visual_effect_list.remove(vis)
 
         # Update UI Values
-        self.wave_manager.update(delta_time)
+        self.wave_manager.update(effective_delta)
         self.update_ui_values()
 
         #  Check Game Over Condition
@@ -432,6 +444,16 @@ class GameView(arcade.View):
 
         if symbol == arcade.key.ESCAPE:
             self.window.close()
+        # P to Pause
+        if symbol == arcade.key.P:
+            self.paused = not self.paused
+
+        # F to Toggle Fast Forward (2x Speed)
+        elif symbol == arcade.key.F:
+            if self.game_speed == 1.0:
+                self.game_speed = 2.0
+            else:
+                self.game_speed = 1.0
 
     def on_key_release(self, symbol, modifiers):
         if symbol in self.keys_held:

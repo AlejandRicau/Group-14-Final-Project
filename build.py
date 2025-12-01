@@ -40,6 +40,11 @@ def build():
         '--onefile',  # Bundle into a single file
         '--windowed',  # No terminal window
         f'--add-data={add_data}',  # Include assets
+
+        # --- THE FIX IS HERE ---
+        '--hidden-import=arcade.gl.backends.opengl',
+        # -----------------------
+
         '--clean',  # Clean cache
         '--noconfirm',  # Don't ask to overwrite
     ])
