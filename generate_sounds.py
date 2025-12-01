@@ -301,15 +301,112 @@ def generate_dark_eyes_melody():
     return data
 
 
+def generate_servo_slide(duration=0.4):
+    """
+    Generates a mechanical 'sliding' sound for the menu opening.
+    Technique: Sine wave rising in pitch + chopped noise for texture.
+    """
+    data = bytearray()
+    samples = int(44100 * duration)
+    for i in range(samples):
+        t = i / 44100
+
+        # Rising Pitch (Motor whine)
+        freq = 100 + (t * 400)
+        motor = math.sin(2 * math.pi * freq * t) * 0.3
+
+        # Texture (The "sliding" friction)
+        friction = random.uniform(-0.5, 0.5)
+
+        # Envelope: Fade in/out
+        env = math.sin(t / duration * 3.14)
+
+        signal = (motor + friction) * env * 0.5
+        data.extend(struct.pack('<h', int(signal * 32767)))
+    return data
+
+
+def generate_switch_click(duration=0.05):
+    """
+    Generates a sharp, high-pitched mechanical click for selection.
+    """
+    data = bytearray()
+    samples = int(44100 * duration)
+    for i in range(samples):
+        t = i / 44100
+
+        # Very fast high frequency chirp
+        wave = math.sin(2 * math.pi * 2000 * t)
+
+        # Instant decay
+        env = math.exp(-80 * t)
+
+        signal = wave * env * 0.6
+        data.extend(struct.pack('<h', int(signal * 32767)))
+    return data
+
+
+def generate_error_buzz(duration=0.3):
+    """
+    Generates a 'Stuck Valve' sound (Low Dissonant Buzz).
+    Technique: Sawtooth wave + Sine wave interference.
+    """
+    data = bytearray()
+    samples = int(44100 * duration)
+    for i in range(samples):
+        t = i / 44100
+
+        # Base Low Tone (80Hz)
+        base = math.sin(2 * math.pi * 80 * t)
+
+        # Interference (85Hz) to create a "wobble" or "stuck" feel
+        wobble = math.sin(2 * math.pi * 85 * t)
+
+        # Buzz (Square/Sawish approximation)
+        buzz = 1.0 if (t * 80) % 1.0 > 0.5 else -1.0
+
+        # Mix: Mostly base, some buzz
+        signal = (base * 0.5) + (wobble * 0.3) + (buzz * 0.1)
+
+        # Short envelope
+        env = math.exp(-10 * t)
+
+        signal *= env * 0.5
+        data.extend(struct.pack('<h', int(signal * 32767)))
+    return data
+
+
+def generate_servo_slide_down(duration=0.4):
+    """
+    Generates a mechanical 'sliding' sound with DECREASING pitch (Menu Close).
+    """
+    data = bytearray()
+    samples = int(44100 * duration)
+    for i in range(samples):
+        t = i / 44100
+
+        # Falling Pitch: Starts high (500), drops to low (100)
+        # Original was: 100 + (t * 400)
+        freq = 500 - (t * 400)
+
+        motor = math.sin(2 * math.pi * freq * t) * 0.3
+        friction = random.uniform(-0.5, 0.5)
+        env = math.sin(t / duration * 3.14)
+
+        signal = (motor + friction) * env * 0.5
+        data.extend(struct.pack('<h', int(signal * 32767)))
+    return data
+
 if __name__ == "__main__":
-    # ... (Previous generations) ...
     write_wav("steam_shoot.wav", generate_steam_hiss(0.15))
     write_wav("aoe_thud.wav", generate_thud(0.4))
     write_wav("build_clang.wav", generate_clang(0.3))
     write_wav("laser_hum.wav", generate_heavy_steam(1.0))
-    write_wav("ambience_loop.wav", generate_musical_ambience(60.0))
-
-    # --- Generate the Easter Egg ---
+    # write_wav("ambience_loop.wav", generate_musical_ambience(60.0))
     write_wav("easter_egg.wav", generate_dark_eyes_melody())
+    write_wav("ui_menu.wav", generate_servo_slide(0.3))
+    write_wav("ui_click.wav", generate_switch_click(0.05))
+    write_wav("ui_error.wav", generate_error_buzz(0.3))
+    write_wav("ui_menu_close.wav", generate_servo_slide_down(0.3))
 
     print("Done! Assets updated.")

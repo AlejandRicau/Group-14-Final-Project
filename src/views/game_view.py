@@ -100,8 +100,8 @@ class GameView(arcade.View):
         # ==================================================
 
         # Load Textures
-        icon_money = arcade.load_texture(":resources:images/items/coinGold.png")
-        icon_lives = arcade.load_texture(":resources:images/items/gemRed.png")
+        icon_money = arcade.load_texture("assets/images/items/coinGold.png")
+        icon_lives = arcade.load_texture("assets/images/items/gemRed.png")
 
         # Helper: Tighter spacing for compact look
         def create_stat_group(icon, text, color):
@@ -164,6 +164,7 @@ class GameView(arcade.View):
                 # --- NEW: Create the Ghost Sprite immediately ---
                 # This ensures we don't have to load textures in on_draw
                 self.create_ghost_tower(tower_type)
+                self.sound_manager.play_sound("ui_select", volume=0.5)
 
             return btn
 
@@ -194,8 +195,10 @@ class GameView(arcade.View):
         def on_toggle_click(event):
             if self.tower_panel in self.root_layout.children:
                 self.root_layout.remove(self.tower_panel)
+                self.sound_manager.play_sound("ui_close", volume=0.5)
             else:
                 # Add panel ABOVE the button (since button is at bottom)
+                self.sound_manager.play_sound("ui_menu", volume=0.5)
                 self.root_layout.add(
                     self.tower_panel,
                     anchor_x="right",
@@ -399,16 +402,19 @@ class GameView(arcade.View):
         # 1. Check if occupied
         if tile.tower:
             print("Space occupied!")
+            self.sound_manager.play_sound("ui_error", volume=0.8)
             return False
 
         # 2. Check Affordability
         if not self.game_manager.can_afford(TOWER_COST):
             print("Not enough money!")
+            self.sound_manager.play_sound("ui_error", volume=0.8)
             return False
 
         # 3. Check Validity (Must be near path)
         if not tile.is_valid_tower_location(self.map):
             print("Invalid location!")
+            self.sound_manager.play_sound("ui_error", volume=0.8)
             return False
 
         # 4. Success!

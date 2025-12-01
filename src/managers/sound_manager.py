@@ -19,6 +19,11 @@ class SoundManager:
         self.load_sound("build", "build_clang.wav")
         self.load_sound("bg_ambiance", "ambience_loop.wav")
         self.load_sound("easter_egg", "easter_egg.wav")
+        self.load_sound("ui_menu", "ui_menu.wav")
+        self.load_sound("ui_close", "ui_menu_close.wav")
+        self.load_sound("ui_select", "ui_click.wav")
+        self.load_sound("ui_error", "ui_error.wav")
+
 
         # Volume settings
         self.master_volume = 0.5
