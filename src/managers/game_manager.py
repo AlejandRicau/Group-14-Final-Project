@@ -32,7 +32,7 @@ class GameManager:
             except:
                 # If key file is corrupt, regenerate
                 pass
-
+        KEY_FILE.parent.mkdir(parents=True, exist_ok=True)
         # Generate new key
         new_key = Fernet.generate_key()
         with open(KEY_FILE, "wb") as f:
