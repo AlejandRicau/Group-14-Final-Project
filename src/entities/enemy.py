@@ -1,16 +1,42 @@
 from src.constants import *
 import arcade
 import math
+from pathlib import Path
 from src.ui.indicator_bar import IndicatorBar
-
+ASSETS_PATH = Path(__file__).parent.parent.parent / "assets"
 
 class Enemy(arcade.Sprite):
     def __init__(self, path, game_manager, bar_list, health=BASE_ENEMY_HEALTH, damage=ENEMY_PENALTY, speed=BASE_ENEMY_SPEED, reward=ENEMY_REWARD):
         # 1. Load Texture
-        texture = arcade.load_texture("assets/images/characters/zombie_idle.png")
-        desired_size = TILE_SIZE * 0.8
-        scale = desired_size / max(texture.width, texture.height)
-        super().__init__(texture, scale=scale)
+        super().__init__()
+        # --- ANIMATION SETUP ---
+        self.walk_right_textures = []
+        self.walk_left_textures = []
+
+        for i in range(8):
+            tex_path = ASSETS_PATH / "images/characters/ut_zombie" / f"walk_{i}.png"
+
+            # 1. Load Right (Standard)
+            tex_r = arcade.load_texture(str(tex_path))
+            self.walk_right_textures.append(tex_r)
+
+            # 2. Load Left (Flip the existing texture)
+            # FIX: Use .flip_left_right() instead of argument
+            tex_l = tex_r.flip_left_right()
+            self.walk_left_textures.append(tex_l)
+
+        # Set initial state
+        self.cur_texture_index = 0
+        self.texture = self.walk_right_textures[0]
+
+        # Animation State
+        self.time_since_last_swap = 0.0
+        self.animation_speed = 0.1
+        self.facing_right = True
+
+        # Scale
+        desired_size = TILE_SIZE * 1
+        self.scale = desired_size / max(self.texture.width, self.texture.height)
 
         self.path = path
         self.game_manager = game_manager
@@ -23,7 +49,7 @@ class Enemy(arcade.Sprite):
         self.reward = reward
         self.current_point_index = 0
 
-        # --- NEW: Setup Health Bar ---
+        # Setup Health Bar
         # We make it small (width=16) to fit the tile size (20)
         self.indicator_bar = IndicatorBar(
             owner=self,
@@ -68,41 +94,52 @@ class Enemy(arcade.Sprite):
         if not self.path or self.current_point_index >= len(self.path):
             return
 
-        # 1. Identify Target
+            # 1. Navigation Logic
         target_point = self.path[self.current_point_index]
         dest_x, dest_y = target_point
 
-        # 2. Calculate Vector
         start_x = self.center_x
         start_y = self.center_y
+
         x_diff = dest_x - start_x
         y_diff = dest_y - start_y
 
-        # 3. Calculate Distance and Speed
         distance = math.sqrt(x_diff ** 2 + y_diff ** 2)
         move_distance = self.speed * delta_time
 
-        # 4. Movement Angle (Math only, no visual rotation)
-        angle_rad = math.atan2(y_diff, x_diff)
+        # 2. Determine Facing Direction
+        if x_diff > 0.1:
+            self.facing_right = True
+        elif x_diff < -0.1:
+            self.facing_right = False
 
-        # --- REMOVED: self.angle = math.degrees(angle_rad) ---
-        # We just leave self.angle alone (it defaults to 0)
-
-        # 5. Move Logic
+        # 3. Move
         if distance <= move_distance:
-            # Snap to target
             self.center_x = dest_x
             self.center_y = dest_y
             self.current_point_index += 1
-
             if self.current_point_index >= len(self.path):
                 self.reach_goal()
         else:
-            # Move smoothly using the calculated radian angle
+            angle_rad = math.atan2(y_diff, x_diff)
             self.center_x += math.cos(angle_rad) * move_distance
             self.center_y += math.sin(angle_rad) * move_distance
 
-        # 6. Update Health Bar Position
+        # 4. Animate Texture
+        self.time_since_last_swap += delta_time
+        if self.time_since_last_swap > self.animation_speed:
+            self.time_since_last_swap = 0.0
+            self.cur_texture_index += 1
+
+            if self.cur_texture_index >= 8:
+                self.cur_texture_index = 0
+
+            if self.facing_right:
+                self.texture = self.walk_right_textures[self.cur_texture_index]
+            else:
+                self.texture = self.walk_left_textures[self.cur_texture_index]
+
+        # 5. Update Health Bar Position
         if self.indicator_bar:
             self.indicator_bar.position = (self.center_x, self.center_y + 12)
 

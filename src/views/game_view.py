@@ -42,6 +42,7 @@ class GameView(arcade.View):
         # --- UI Setup ---
         self.ui_manager = arcade.gui.UIManager()
         self.ui_manager.enable()
+        self.use_shaders = True
 
         # Create variables
         self.money_label = None
@@ -360,15 +361,15 @@ class GameView(arcade.View):
         self.camera.use()
         self.background_list.draw()
 
-        # --- FIX: Use self.window.ctx instead of self.ctx ---
         # Tower Glows (Behind towers)
-        self.window.ctx.enable(self.window.ctx.BLEND)
-        self.window.ctx.blend_func = self.window.ctx.SRC_ALPHA, self.window.ctx.ONE
+        if self.use_shaders:
+            self.window.ctx.enable(self.window.ctx.BLEND)
+            self.window.ctx.blend_func = self.window.ctx.SRC_ALPHA, self.window.ctx.ONE
 
-        if self.tower_list:
-            self.orb_shader.render(self.tower_list, self.camera, color=(1.0, 0.8, 0.2))
+            if self.tower_list:
+                self.orb_shader.render(self.tower_list, self.camera, color=(1.0, 0.8, 0.2))
 
-        self.window.ctx.blend_func = self.window.ctx.SRC_ALPHA, self.window.ctx.ONE_MINUS_SRC_ALPHA
+            self.window.ctx.blend_func = self.window.ctx.SRC_ALPHA, self.window.ctx.ONE_MINUS_SRC_ALPHA
 
         # Draw Objects
         self.tower_list.draw()
@@ -380,43 +381,54 @@ class GameView(arcade.View):
             tower.cooldown_effect.draw()
 
         # --- PASS 1: VIGNETTE & STEAM (Standard Blend) ---
-        self.window.ctx.enable(self.window.ctx.BLEND)
-        self.window.ctx.blend_func = self.window.ctx.SRC_ALPHA, self.window.ctx.ONE_MINUS_SRC_ALPHA
+        if self.use_shaders:
+            self.window.ctx.enable(self.window.ctx.BLEND)
+            self.window.ctx.blend_func = self.window.ctx.SRC_ALPHA, self.window.ctx.ONE_MINUS_SRC_ALPHA
 
-        # A. Vignette
-        light_sources = []
-        if self.tower_list: light_sources.extend(self.tower_list)
-        if self.map.goals:  light_sources.extend(self.map.goals)
-        if self.map.spawns: light_sources.extend(self.map.spawns)
+            # A. Vignette
+            light_sources = []
+            if self.tower_list: light_sources.extend(self.tower_list)
+            if self.map.goals:  light_sources.extend(self.map.goals)
+            if self.map.spawns: light_sources.extend(self.map.spawns)
 
-        self.vignette_shader.render(light_sources, self.camera)
+            self.vignette_shader.render(light_sources, self.camera)
 
-        # B. Steam
-        puffs = [x for x in self.visual_effect_list if isinstance(x, SteamPuff)]
-        if puffs:
-            self.steam_shader.render(puffs, self.camera)
+            # B. Steam
+            puffs = [x for x in self.visual_effect_list if isinstance(x, SteamPuff)]
+            if puffs:
+                self.steam_shader.render(puffs, self.camera)
 
-        # --- PASS 2: GLOWS (Additive Blend) ---
-        self.window.ctx.blend_func = self.window.ctx.SRC_ALPHA, self.window.ctx.ONE
+            # --- PASS 2: GLOWS (Additive Blend) ---
+            self.window.ctx.blend_func = self.window.ctx.SRC_ALPHA, self.window.ctx.ONE
 
-        bullets = [x for x in self.visual_effect_list if isinstance(x, Bullet)]
-        lasers = [x for x in self.visual_effect_list if isinstance(x, LaserEffect)]
-        steam_booms = [x for x in self.visual_effect_list if isinstance(x, SteamBoom)]
+            bullets = [x for x in self.visual_effect_list if isinstance(x, Bullet)]
+            lasers = [x for x in self.visual_effect_list if isinstance(x, LaserEffect)]
+            steam_booms = [x for x in self.visual_effect_list if isinstance(x, SteamBoom)]
 
-        if bullets:
-            self.beam_shader.render(bullets, self.camera, color=(0.9, 0.95, 1.0))
-        if lasers:
-            self.laser_shader.render(lasers, self.camera, color=(0.8, 0.9, 1.0))
-        if steam_booms:
-            self.orb_shader.render(steam_booms, self.camera, color=(0.6, 0.85, 1.0))
+            if bullets:
+                self.beam_shader.render(bullets, self.camera, color=(0.9, 0.95, 1.0))
+            if lasers:
+                self.laser_shader.render(lasers, self.camera, color=(0.8, 0.9, 1.0))
+            if steam_booms:
+                self.orb_shader.render(steam_booms, self.camera, color=(0.6, 0.85, 1.0))
 
-        # --- RESET ---
-        self.window.ctx.blend_func = self.window.ctx.SRC_ALPHA, self.window.ctx.ONE_MINUS_SRC_ALPHA
+            # --- RESET ---
+            self.window.ctx.blend_func = self.window.ctx.SRC_ALPHA, self.window.ctx.ONE_MINUS_SRC_ALPHA
 
         # 3. Draw Actual Projectile Sprites
         for vis in self.visual_effect_list:
             vis.draw()
 
+
+        # 4. Draw Ghost & UI
+        if self.selected_tower_type and len(self.ghost_list) > 0:
+            wx, wy, _ = self.camera.unproject((self.window._mouse_x, self.window._mouse_y))
+            self.ghost_list[0].position = (wx, wy)
+            self.ghost_list.draw()
+
+        self.ui_manager.draw()
+
+        self.gui_camera.use()
         # --- NEW: Damage Flash (Red Overlay) ---
         if self.damage_flash_alpha > 0:
             # Arcade 3.0 requires a Rect object for arguments
@@ -430,16 +442,6 @@ class GameView(arcade.View):
             color = (255, 0, 0, int(self.damage_flash_alpha))
 
             arcade.draw_rect_filled(rect, color)
-
-        # 4. Draw Ghost & UI
-        if self.selected_tower_type and len(self.ghost_list) > 0:
-            wx, wy, _ = self.camera.unproject((self.window._mouse_x, self.window._mouse_y))
-            self.ghost_list[0].position = (wx, wy)
-            self.ghost_list.draw()
-
-        self.ui_manager.draw()
-
-        self.gui_camera.use()
         for msg in self.ui_messages:
             msg.draw()
 
@@ -601,6 +603,11 @@ class GameView(arcade.View):
         # Toggle Speed (F)
         elif symbol == arcade.key.F:
             self.toggle_speed()
+
+        # Toggle Shaders (H)
+        elif symbol == arcade.key.H:
+            self.use_shaders = not self.use_shaders
+            print(f"Shaders: {'ON' if self.use_shaders else 'OFF'}")
 
     def on_key_release(self, symbol, modifiers):
         if symbol in self.keys_held:
