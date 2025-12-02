@@ -2,9 +2,10 @@ from src.constants import *
 import os
 from pathlib import Path
 from cryptography.fernet import Fernet
+USER_DATA_DIR = Path.home() / ".steam_tunnels_defense"
 
-SAVE_FILE = Path("src/data/highscore.dat")
-KEY_FILE = Path("src/data/secret.key")
+SAVE_FILE = USER_DATA_DIR / "highscore.dat"
+KEY_FILE = USER_DATA_DIR / "secret.key"
 
 
 class GameManager:
