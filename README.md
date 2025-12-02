@@ -66,6 +66,7 @@ The game code is organized as follows for ease of access and logical grouping:
 Group-14-Final-Project/
 ├── run_game.py             # Entry point
 ├── build.py                # Pyinstall script to package game as an executable
+├── dist/                   # Pre-built distributions for different operating systems.
 ├── assets/                 # Shaders, Sounds, and Textures
 └── src/
     ├── views/              # Screen management (Start, Instructions, Game, Game Over)
