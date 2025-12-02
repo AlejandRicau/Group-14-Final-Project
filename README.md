@@ -1,6 +1,6 @@
 # Steam Tunnels Defense
 
-A procedural Tower Defense game set in the steam tunnels underneath UT Austin. Built with **Python** and the **Arcade** library, featuring custom GLSL shaders for atmospheric lighting, procedural audio, and particle effects.
+A procedural Tower Defense game set in the steam tunnels underneath UT Austin. Built with **Python** and the **Arcade** library, featuring custom GLSL shaders for atmospheric lighting, and particle effects.
 
 ![Game Screenshot](assets/images/screenshot.png)
 
@@ -8,8 +8,6 @@ A procedural Tower Defense game set in the steam tunnels underneath UT Austin. B
 
 * **Procedural Map Generation:** Every game features a unique layout with procedurally generated steam tunnels and autotiling.
 * **Dynamic Lighting Engine:** Custom GLSL shaders provide additive blending, glowing projectiles, and a dynamic vignette "Fog of War" that reacts to tower placement.
-* **Procedural Audio:** Sound effects and the dynamic ambient soundtrack (E Phrygian mode) are generated mathematically at runtime.
-* **Animated Enemies:** Zombies feature custom-processed animations with UT branding (Orange shirts).
 * **Pathfinding:** Enemies navigate complex mazes using BFS pathfinding.
 * **Three Unique Towers:**
     * **Base Tower:** Fires high-velocity steam bolts (Beam Shader).
@@ -67,8 +65,7 @@ The game code is organized as follows for ease of access and logical grouping:
 ```text
 Group-14-Final-Project/
 ├── run_game.py             # Entry point
-├── fetch_assets.py         # Tool to grab image resources
-├── generate_sounds.py      # Tool to synthesize audio
+├── build.py                # Pyinstall script to package game as an executable
 ├── assets/                 # Shaders, Sounds, and Textures
 └── src/
     ├── views/              # Screen management (Start, Instructions, Game, Game Over)
