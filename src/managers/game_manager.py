@@ -3,8 +3,8 @@ import os
 from pathlib import Path
 from cryptography.fernet import Fernet
 
-SAVE_FILE = Path("highscore.dat")
-KEY_FILE = Path("secret.key")
+SAVE_FILE = Path("src/data/highscore.dat")
+KEY_FILE = Path("src/data/secret.key")
 
 
 class GameManager:
@@ -86,10 +86,9 @@ class GameManager:
 
     def add_money(self, amount):
         self.money += amount
-        self.score += amount # Optional: Score increases with money earned
+        self.score += amount
 
     def lose_life(self, amount=1):
         self.lives -= amount
         if self.lives < 0:
             self.lives = 0
-            # Logic for Game Over can be added here later
