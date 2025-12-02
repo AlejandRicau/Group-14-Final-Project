@@ -57,10 +57,7 @@ class StartView(arcade.View):
 
     def on_mouse_press(self, _x, _y, _button, _modifiers):
         """If the user presses the mouse button, start the game."""
-        from src.views.game_view import GameView
+        from src.views.instruction_view import InstructionView
 
-        grid_width = self.window.width // TILE_SIZE
-        grid_height = self.window.height // TILE_SIZE
-
-        game_view = GameView(grid_width, grid_height, TILE_SIZE)
-        self.window.show_view(game_view)
+        instruction_view = InstructionView()
+        self.window.show_view(instruction_view)

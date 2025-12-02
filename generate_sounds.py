@@ -499,6 +499,105 @@ def generate_player_hurt(duration=0.4):
         data.extend(struct.pack('<h', int(signal * 32767)))
     return data
 
+
+def generate_snare_cadence(duration=8.0):
+    """
+    Generates a military snare drum march.
+    Rhythm: 1, 2-and, 3, 4-and-a (Marching Cadence)
+    """
+    data = bytearray()
+    samples_count = int(44100 * duration)
+    master_buffer = [0.0] * samples_count
+
+    # Snare Sound Generator (Noise + Tone)
+    def add_hit(start_index, velocity):
+        length = 4000  # 0.1s
+        for i in range(length):
+            if start_index + i >= samples_count: break
+            t = i / 44100
+
+            # White Noise (The Snares)
+            noise = random.uniform(-1, 1)
+            # Sine Tone (The Drum Head) - 180Hz
+            tone = math.sin(2 * math.pi * 180 * t)
+
+            # Envelope: Instant attack, fast decay
+            env = math.exp(-30 * t)
+
+            val = (noise * 0.7 + tone * 0.3) * env * velocity
+            master_buffer[start_index + i] += val
+
+    # Sequencer (100 BPM)
+    beat_len = 0.6  # Seconds per beat
+    samples_per_beat = int(beat_len * 44100)
+
+    cursor = 0
+    while cursor < samples_count - samples_per_beat * 4:
+        # Beat 1: BOOM
+        add_hit(cursor, 1.0)
+
+        # Beat 2: tat-tat
+        add_hit(cursor + samples_per_beat, 0.6)
+        add_hit(cursor + samples_per_beat + int(samples_per_beat / 2), 0.5)
+
+        # Beat 3: BOOM
+        add_hit(cursor + samples_per_beat * 2, 0.9)
+
+        # Beat 4: trrr-pup (Roll)
+        s4 = cursor + samples_per_beat * 3
+        add_hit(s4, 0.5)
+        add_hit(s4 + int(samples_per_beat / 4), 0.4)
+        add_hit(s4 + int(samples_per_beat / 2), 0.6)
+
+        cursor += samples_per_beat * 4
+
+    # Write to bytes
+    for samp in master_buffer:
+        samp = max(-1.0, min(1.0, samp))
+        data.extend(struct.pack('<h', int(samp * 32767 * 0.5)))
+
+    return data
+
+
+def generate_game_start(duration=1.5):
+    """
+    Generates a 'Hydraulic Airlock' sound for starting the game.
+    Layers: Heavy Clunk + Steam Release + Rising Tone.
+    """
+    data = bytearray()
+    samples = int(44100 * duration)
+
+    for i in range(samples):
+        t = i / 44100
+
+        # 1. The Lock (Heavy Clunk at start)
+        clunk = 0
+        if t < 0.2:
+            # Low frequency impact
+            clunk = math.sin(2 * math.pi * 60 * t) * math.exp(-20 * t)
+            # Add noise burst for texture
+            clunk += random.uniform(-0.5, 0.5) * math.exp(-30 * t)
+
+        # 2. The Steam (Hissing release)
+        # Starts quiet, swells up, then fades
+        steam = random.uniform(-0.4, 0.4)
+        steam_env = 0
+        if t > 0.1:
+            # Fade in
+            steam_env = math.sin((t - 0.1) * 3.0)
+            if steam_env < 0: steam_env = 0  # Clamp to positive part of sine
+            steam_env *= math.exp(-2 * (t - 0.1))
+
+        # 3. The Servo (Rising tone)
+        freq = 100 + (t * 200)
+        servo = math.sin(2 * math.pi * freq * t) * 0.2 * math.exp(-2 * t)
+
+        signal = (clunk * 0.8) + (steam * steam_env * 0.6) + servo
+
+        data.extend(struct.pack('<h', int(signal * 32767 * 0.8)))
+
+    return data
+
 if __name__ == "__main__":
     write_wav("steam_shoot.wav", generate_steam_hiss(0.15))
     write_wav("aoe_thud.wav", generate_thud(0.4))
@@ -515,5 +614,7 @@ if __name__ == "__main__":
     write_wav("ui_speed_up.wav", generate_ui_speed_up())
     write_wav("ui_slow_down.wav", generate_ui_slow_down())
     write_wav("player_hurt.wav", generate_player_hurt())
+    write_wav("ui_march.wav", generate_snare_cadence(8.0))
+    write_wav("ui_start.wav", generate_game_start(1.5))
 
     print("Done! Assets updated.")

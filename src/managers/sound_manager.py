@@ -26,6 +26,7 @@ class SoundManager:
         self.load_sound("ui_close", "ui_menu_close.wav")
         self.load_sound("ui_select", "ui_click.wav")
         self.load_sound("ui_error", "ui_error.wav")
+        self.load_sound("ui_start", "ui_start.wav")
 
         # Time Control Sounds
         self.load_sound("ui_pause", "ui_pause.wav")
@@ -35,6 +36,7 @@ class SoundManager:
 
         # Ambiance Sounds
         self.load_sound("bg_ambiance", "ambience_loop.wav")
+        self.load_sound("ui_march", "ui_march.wav")
 
         # Enemy sounds
         self.load_sound("player_hurt", "player_hurt.wav")
@@ -74,3 +76,14 @@ class SoundManager:
         if self.music_player:
             arcade.stop_sound(self.music_player)
             self.music_player = None
+
+    def start_instruction_bg(self):
+        """Starts the background loop."""
+        if "ui_march" in self.sounds and self.music_player is None:
+            # loop=True makes it repeat forever
+            # volume=0.3 keeps it subtle so SFX pop over it
+            self.music_player = arcade.play_sound(
+                self.sounds["ui_march"],
+                volume=0.3 * self.master_volume,
+                loop=True
+            )
